@@ -1,0 +1,24 @@
+Sample ID	Latitude	Longitude	Sample ID	Species	Genus	Sample preservation	State	Tribe	Symbiont	Native	Habitat	sequencingbatch
+N13-2-D-No	33.54222	-88.77489	nodule	Trifolium_lappaceum	Trifolium	dry	MS	Trifolieae	rhizobial	no	roadside	batch20221207
+N13-2-D-Rh	33.54222	-88.77489	rhizosphere	Trifolium_lappaceum	Trifolium	dry	MS	Trifolieae	rhizobial	no	roadside	batch20221207
+N13-2-D-Ro	33.54222	-88.77489	root	Trifolium_lappaceum	Trifolium	dry	MS	Trifolieae	rhizobial	no	roadside	batch20221207
+N34-2-D-No	33.506668	-88.736796	nodule	Desmodium_sessilifolium	Desmodium	dry	MS	Desmodieae	rhizobial	yes	calcareousprairie	batch20221207
+N34-2-D-Rh	33.506668	-88.736796	rhizosphere	Desmodium_sessilifolium	Desmodium	dry	MS	Desmodieae	rhizobial	yes	calcareousprairie	batch20221207
+N34-2-D-Ro	33.506668	-88.736796	root	Desmodium_sessilifolium	Desmodium	dry	MS	Desmodieae	rhizobial	yes	calcareousprairie	batch20221207
+N35-4-D-No	33.466646	-88.786337	nodule	Sesbania_herbacea	Sesbania	dry	MS	Sesbanieae	rhizobial	yes	ditch	batch20221207
+N35-4-D-Rh	33.466646	-88.786337	rhizosphere	Sesbania_herbacea	Sesbania	dry	MS	Sesbanieae	rhizobial	yes	ditch	batch20221207
+N35-4-D-Ro	33.466646	-88.786337	root	Sesbania_herbacea	Sesbania	dry	MS	Sesbanieae	rhizobial	yes	ditch	batch20221207
+N36-4-D-No	33.637192	-88.501584	nodule	Sesbania_herbacea	Sesbania	dry	MS	Sesbanieae	rhizobial	yes	ditch	batch20221207
+N36-4-D-Rh	33.637192	-88.501584	rhizosphere	Sesbania_herbacea	Sesbania	dry	MS	Sesbanieae	rhizobial	yes	ditch	batch20221207
+N36-4-D-Ro	33.637192	-88.501584	root	Sesbania_herbacea	Sesbania	dry	MS	Sesbanieae	rhizobial	yes	ditch	batch20221207
+N38-2-D-No	33.52539	-88.468494	nodule	Aeschynomene_indica	Aeschynomene	dry	MS	Dalbergieae	rhizobial	no	streamside	batch20221207
+N38-2-D-Ro	33.52539	-88.468494	root	Aeschynomene_indica	Aeschynomene	dry	MS	Dalbergieae	rhizobial	no	streamside	batch20221207
+N38-2-D-Rh	33.52539	-88.468494	rhizosphere	Aeschynomene_indica	Aeschynomene	dry	MS	Dalbergieae	rhizobial	no	streamside	batch20221207
+N39-2-D-No	33.525403	-88.468489	nodule	Apios_americana	Apios	dry	MS	Phaseoleae	rhizobial	yes	streamside	batch20221207
+N39-2-D-Rh	33.525403	-88.468489	rhizosphere	Apios_americana	Apios	dry	MS	Phaseoleae	rhizobial	yes	streamside	batch20221207
+N39-2-D-Ro	33.525403	-88.468489	root	Apios_americana	Apios	dry	MS	Phaseoleae	rhizobial	yes	streamside	batch20221207
+N49-3-D-No	33.28885	-88.772152	nodule	Lackeya_multiflora	Lackeya	dry	MS	Diocleae	rhizobial	yes	bottomlandwoods	batch20221207
+N49-3-D-Rh	33.28885	-88.772152	rhizosphere	Lackeya_multiflora	Lackeya	dry	MS	Diocleae	rhizobial	yes	bottomlandwoods	batch20221207
+N49-3-D-Ro	33.28885	-88.772152	root	Lackeya_multiflora	Lackeya	dry	MS	Diocleae	rhizobial	yes	bottomlandwoods	batch20221207
+ZymoMockDNA	na	na	na	mock_community	na	na	na	na	na	na	na	batch20220124
+ZymoMockDNA_1685	na	na	na	mock_community	na	na	na	na	na	na	na	batch20221207

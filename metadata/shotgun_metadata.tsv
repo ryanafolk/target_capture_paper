@@ -1,0 +1,7 @@
+Sample ID	Latitude	Longitude	Sample ID	Species	Genus	Sample preservation	State	Tribe	Symbiont	Native	Habitat	sequencingbatch
+N24-3-E-No	33.234035	-89.065799	nodule	Wisteria_sinensis	Wisteria	ethanol	MS	Millettieae	rhizobial	no	roadside	batch20220124
+N26-3-E-No	33.661639	-88.512679	nodule	Wisteria_frutescens	Wisteria	ethanol	MS	Millettieae	rhizobial	yes	streamside	batch20220124
+N22-1-E-No	33.264949	-89.090208	nodule	Tephrosia_virginica	Tephrosia	ethanol	MS	Millettieae	rhizobial	yes	pinewoods	batch20220124
+N31-1-E-No	33.507128	-88.737673	nodule	Neptunia_lutea	Neptunia	ethanol	MS	Mimosoideae	rhizobial	yes	calcareousprairie	batch20220124
+N36-4-D-No	33.637192	-88.501584	nodule	Sesbania_herbacea	Sesbania	dry	MS	Sesbanieae	rhizobial	yes	ditch	batch20221207
+N32-7-E-No	33.424227	-88.76036	nodule	Hylodesmum_pauciflorum	Hylodesmum	ethanol	MS	Desmodieae	rhizobial	yes	uplandwoods	batch20220124

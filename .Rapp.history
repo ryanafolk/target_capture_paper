@@ -1,0 +1,3010 @@
+# Parameters#
+years <- 30#
+monthly_contrib <- 2326#
+annual_contrib <- monthly_contrib * 12#
+contrib_growth <- 0.02   # annual increase in contributions#
+nominal_return <- 0.09   # 9% nominal#
+initial_value <- 193000#
+#
+# Initialize vectors#
+FV_total <- numeric(years)#
+FV_contrib_only <- numeric(years)#
+contrib_fraction <- numeric(years)#
+#
+FV_total[1] <- initial_value * (1 + nominal_return) + annual_contrib#
+FV_contrib_only[1] <- initial_value + annual_contrib#
+contrib_fraction[1] <- FV_contrib_only[1] / FV_total[1]#
+#
+for (t in 2:years) {#
+  annual_contrib_t <- annual_contrib * (1 + contrib_growth)^(t - 1)#
+  # total FV with market returns#
+  FV_total[t] <- FV_total[t - 1] * (1 + nominal_return) + annual_contrib_t#
+  # FV if returns = 0 (just contributions)#
+  FV_contrib_only[t] <- FV_contrib_only[t - 1] + annual_contrib_t#
+  # fraction due to contributions#
+  contrib_fraction[t] <- FV_contrib_only[t] / FV_total[t]#
+}#
+#
+# Plot#
+library(ggplot2)#
+#
+df <- data.frame(#
+  Year = 1:years,#
+  ContributionFraction = contrib_fraction#
+)#
+#
+ggplot(df, aes(x = Year, y = ContributionFraction)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(title = "Effect of Contributions vs. Market Compounding",#
+       y = "Fraction of Total FV Due to Contributions",#
+       x = "Year") +#
+  theme_minimal(base_size = 13)
+# Parameters#
+years <- 30#
+monthly_contrib <- 2326#
+annual_contrib <- monthly_contrib * 12#
+contrib_growth <- 0.02   # annual increase in contributions#
+nominal_return <- 0.09   # 9% nominal -- in the current environment translates to 6% real which is reasonable for sp500#
+initial_value <- 193000#
+#
+# Initialize vectors#
+FV_total <- numeric(years)#
+FV_contrib_only <- numeric(years)#
+contrib_fraction <- numeric(years)#
+#
+FV_total[1] <- initial_value * (1 + nominal_return) + annual_contrib#
+FV_contrib_only[1] <- initial_value + annual_contrib#
+contrib_fraction[1] <- FV_contrib_only[1] / FV_total[1]#
+#
+for (t in 2:years) {#
+  annual_contrib_t <- annual_contrib * (1 + contrib_growth)^(t - 1)#
+  # total FV with market returns#
+  FV_total[t] <- FV_total[t - 1] * (1 + nominal_return) + annual_contrib_t#
+  # FV if returns = 0 (just contributions)#
+  FV_contrib_only[t] <- FV_contrib_only[t - 1] + annual_contrib_t#
+  # fraction due to contributions#
+  contrib_fraction[t] <- FV_contrib_only[t] / FV_total[t]#
+}#
+#
+# Plot#
+library(ggplot2)#
+#
+df <- data.frame(#
+  Year = 1:years,#
+  ContributionFraction = contrib_fraction#
+)#
+#
+ggplot(df, aes(x = Year, y = ContributionFraction)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(title = "Effect of Contributions vs. Market Compounding",#
+       y = "Fraction of Total FV Due to Contributions",#
+       x = "Year") +#
+  theme_minimal(base_size = 13)
+simA
+simA_long
+# Step 1: reshape simA_long into wide format (simulations as rows)#
+simA_wide <- simA_long %>%#
+  filter(Portfolio == "A") %>%#
+  pivot_wider(names_from = Year, values_from = Value) %>%#
+  select(-Portfolio)#
+#
+# Step 2: compute doubling time for each simulation#
+initial_balance <- simA_wide$Sim[1] # or you can explicitly set initial_value#
+initial_value <- simA_long %>% filter(Portfolio == "A", Year == 1) %>% pull(Value) %>% median()#
+#
+doubling_times <- apply(simA_wide[,-1], 1, function(x) {#
+  years <- which(x >= 2 * initial_value)#
+  if (length(years) == 0) return(NA)  # never doubled#
+  return(years[1])                      # first year of doubling#
+})#
+#
+# Step 3: summarize#
+median_doubling <- median(doubling_times, na.rm = TRUE)#
+cat("Median doubling time for Portfolio A simulations:", median_doubling, "years\n")#
+#
+# Step 4: visualize the distribution#
+doubling_df <- data.frame(DoublingTime = doubling_times)#
+#
+ggplot(doubling_df, aes(x = DoublingTime)) +#
+  geom_histogram(binwidth = 1, fill = "#1f77b4", color = "white") +#
+  geom_vline(xintercept = median_doubling, linetype = "dashed", color = "red", size = 1) +#
+  labs(title = "Distribution of Doubling Times for Portfolio A",#
+       subtitle = paste("Median doubling time =", median_doubling, "years"),#
+       x = "Years to Double Initial Balance",#
+       y = "Frequency") +#
+  theme_minimal()
+# Wide format#
+simA_wide <- simA_long %>%#
+  filter(Portfolio == "A") %>%#
+  pivot_wider(names_from = Year, values_from = Value) %>%#
+  select(-Portfolio)#
+#
+initial_value <- simA_long %>% filter(Portfolio == "A", Year == 1) %>% pull(Value) %>% median()#
+#
+# Function to get Nth doubling year#
+nth_doubling <- function(x, n, init) {#
+  years <- which(x >= 2^n * init)#
+  if(length(years) == 0) return(NA)#
+  return(years[1])#
+}#
+#
+doubling_times_df <- data.frame(#
+  First  = apply(simA_wide[,-1], 1, nth_doubling, n=1, init=initial_value),#
+  Second = apply(simA_wide[,-1], 1, nth_doubling, n=2, init=initial_value),#
+  Third  = apply(simA_wide[,-1], 1, nth_doubling, n=3, init=initial_value)#
+) %>%#
+  pivot_longer(everything(), names_to="Doubling", values_to="Year")#
+#
+# Median for reference#
+median_times <- doubling_times_df %>%#
+  group_by(Doubling) %>%#
+  summarize(MedianYear = median(Year, na.rm=TRUE))#
+#
+print(median_times)#
+#
+# Plot#
+ggplot(doubling_times_df, aes(x=Year, fill=Doubling)) +#
+  geom_histogram(binwidth=1, alpha=0.5, position="identity", color="white") +#
+  geom_vline(data=median_times, aes(xintercept=MedianYear, color=Doubling),#
+             linetype="dashed", size=1) +#
+  labs(title="Distributions of First, Second, and Third Doubling Times",#
+       x="Year",#
+       y="Frequency") +#
+  scale_fill_manual(values=c("#1f77b4", "#d62728", "#2ca02c")) +#
+  scale_color_manual(values=c("#1f77b4", "#d62728", "#2ca02c")) +#
+  theme_minimal()
+# Accumulation contributions effect#
+simulate_contrib_effect <- function(sim_df, monthly_contrib, annual_raise_pct) {#
+  n_years <- ncol(sim_df)#
+  n_sim <- nrow(sim_df)#
+  contrib_mat <- matrix(0, nrow = n_sim, ncol = n_years)#
+  for (year in 1:n_years) {#
+    contrib_mat[, year] <- ifelse(year == 1, monthly_contrib * 12, 0)#
+    if (year > 1) {#
+      contrib_mat[, year] <- contrib_mat[, year] + contrib_mat[, year - 1] * (1 + annual_raise_pct)#
+    }#
+  }#
+  contrib_mat#
+}#
+#
+# Example: portfolio A#
+contrib_mat_A <- simulate_contrib_effect(simA, monthly_contrib, annual_raise_pct)#
+returns_only_A <- simA - contrib_mat_A#
+#
+median_total <- apply(simA, 2, median)#
+median_contrib <- apply(contrib_mat_A, 2, median)#
+median_returns <- apply(returns_only_A, 2, median)#
+#
+plot_df <- tibble(#
+  Year = 1:accumulation_years,#
+  Total = median_total,#
+  Contributions = median_contrib,#
+  Returns = median_returns#
+)#
+#
+ggplot(plot_df, aes(x = Year)) +#
+  geom_line(aes(y = Total, color = "Total")) +#
+  geom_line(aes(y = Contributions, color = "Contributions")) +#
+  geom_line(aes(y = Returns, color = "Returns")) +#
+  scale_color_manual(values = c("Total"="#2ca02c","Contributions"="#1f77b4","Returns"="#d62728")) +#
+  scale_y_continuous(labels = scales::dollar_format()) +#
+  labs(title="Median Portfolio Growth vs Contributions/Returns (Portfolio A)",#
+       y="Portfolio Value", x="Year") +#
+  theme_minimal()
+failure_prob <- sim_spend_all %>%#
+  group_by(Portfolio, Year) %>%#
+  summarize(FailureProb = mean(Value <= 0), .groups="drop")#
+#
+ggplot(failure_prob, aes(x=Year, y=FailureProb, color=Portfolio)) +#
+  geom_line(linewidth=1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy=1)) +#
+  labs(title="Probability of Portfolio Depletion (Spend-Down Phase)",#
+       y="Probability of Zero Balance", x="Year") +#
+  theme_minimal()
+spend_rates <- c(0.7, 0.8, 0.9)#
+plot_sens_df <- tibble()#
+#
+for (p in spend_rates) {#
+  sim_tmp <- simulate_portfolio(#
+    portfolio = portfolioA, years=spend_years, n_sim=500,#
+    initial_value = tail(simA[[accumulation_years]],1),#
+    current_salary = final_salary,#
+    annual_raise_pct = annual_raise_pct,#
+    monthly_contrib = NULL,#
+    spend_down = TRUE,#
+    percent_retirement_income = p,#
+    use_drawdown_sim = use_drawdown_sim,#
+    drawdown_freq = drawdown_freq,#
+    drawdown_magnitude = drawdown_magnitude,#
+    ss_monthly = ss_monthly,#
+    ss_claim_age = ss_claim_age,#
+    ss_current_age = ss_current_age#
+  )#
+  df_tmp <- sim_to_long(sim_tmp, paste0("Spend_", round(p*100), "%"))#
+  df_tmp <- df_tmp %>%#
+    group_by(Year) %>%#
+    summarize(MedianValue = median(Value), .groups="drop") %>%#
+    mutate(SpendRate = paste0(round(p*100), "%"))#
+  plot_sens_df <- bind_rows(plot_sens_df, df_tmp)#
+}#
+#
+ggplot(plot_sens_df, aes(x=Year, y=MedianValue, color=SpendRate)) +#
+  geom_line(linewidth=1.2) +#
+  scale_y_continuous(labels=scales::dollar_format()) +#
+  labs(title="Spend-Down Median Portfolio Value by Withdrawal Rate",#
+       x="Year", y="Portfolio Value") +#
+  theme_minimal()
+needed_df <- sim_spend_all %>%#
+  group_by(Portfolio, Year) %>%#
+  summarize(NeededPV = mean(Value, na.rm=TRUE), #
+            Lower = quantile(Value, 0.05),#
+            Upper = quantile(Value, 0.95), .groups="drop")#
+#
+ggplot(needed_df, aes(x=Year, y=NeededPV, color=Portfolio)) +#
+  geom_line(linewidth=1.2) +#
+  geom_ribbon(aes(ymin=Lower, ymax=Upper, fill=Portfolio), alpha=0.15, color=NA) +#
+  scale_y_continuous(labels=scales::dollar_format()) +#
+  labs(title="Simulated 'What You'll Need' vs Portfolio (90% CI)",#
+       x="Year", y="Portfolio Value") +#
+  theme_minimal()
+simulate_contrib_effect_correct <- function(n_years, monthly_contrib, annual_raise_pct) {#
+  contrib <- numeric(n_years)#
+  for (y in 1:n_years) {#
+    contrib[y] <- monthly_contrib * 12 * ((1 + annual_raise_pct)^(y - 1))#
+  }#
+  cumsum(contrib)#
+}#
+#
+median_contrib <- simulate_contrib_effect_correct(accumulation_years, monthly_contrib, annual_raise_pct)#
+median_total <- apply(simA, 2, median)#
+median_returns_only <- median_total - median_contrib#
+#
+plot_df <- tibble(#
+  Year = 1:accumulation_years,#
+  Total = median_total,#
+  Contributions = median_contrib,#
+  Returns = median_returns_only#
+)#
+#
+ggplot(plot_df, aes(x = Year)) +#
+  geom_line(aes(y = Total, color = "Total")) +#
+  geom_line(aes(y = Contributions, color = "Contributions")) +#
+  geom_line(aes(y = Returns, color = "Returns")) +#
+  scale_color_manual(values = c("Total"="#2ca02c","Contributions"="#1f77b4","Returns"="#d62728")) +#
+  scale_y_continuous(labels = scales::dollar_format()) +#
+  labs(title="Median Portfolio Growth vs Contributions/Returns (Corrected, Portfolio A)",#
+       y="Portfolio Value", x="Year") +#
+  theme_minimal()
+needed_at_retirement <- sim_spend_all %>%#
+  filter(Year == 1) %>%  # Year 1 of spend-down#
+  group_by(Portfolio) %>%#
+  summarize(PV = Value, .groups="drop")#
+#
+ggplot(needed_at_retirement, aes(x = Portfolio, y = PV, fill=Portfolio)) +#
+  geom_boxplot(alpha=0.4) +#
+  scale_y_continuous(labels=scales::dollar_format()) +#
+  labs(title="Distribution of Simulated Portfolio at Retirement (Required to Sustain Spending)",#
+       x="Portfolio", y="Portfolio Value") +#
+  theme_minimal()
+ggplot(needed_at_retirement, aes(x = Portfolio, y = PV, fill=Portfolio)) +#
+  geom_boxplot(alpha=0.4) +#
+  scale_y_continuous(labels=scales::dollar_format()) +#
+  labs(title="Distribution of Simulated Portfolio\nat Retirement (Required to Sustain Spending)",#
+       x="Portfolio", y="Portfolio Value") +#
+  theme_minimal()
+ggplot(needed_at_retirement, aes(x = Portfolio, y = PV, fill=Portfolio)) +#
+  geom_boxplot(alpha=0.4) +#
+  scale_y_continuous(labels=scales::dollar_format()) +#
+  labs(title="Distribution of Simulated Portfolio\nat Retirement (Required to Sustain\nSpending)",#
+       x="Portfolio", y="Portfolio Value") +#
+  theme_minimal()
+# Compute cumulative contributions and portfolio value medians#
+simA_cum <- simA_long %>%#
+  group_by(Year) %>%#
+  summarize(MedianValue = quantile(Value, 0.5, na.rm = TRUE)) %>%#
+  mutate(#
+    # assume contributions are monthly * 12, growing with salary#
+    annual_contrib = monthly_contrib * 12 * ((1 + annual_raise_pct)^(Year - 1)),#
+    cum_contrib = cumsum(annual_contrib),#
+    contrib_effect = cum_contrib / MedianValue#
+  )#
+#
+ggplot(simA_cum, aes(x = Year, y = contrib_effect)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(#
+    title = "Cumulative Contribution Effect (Median)",#
+    x = "Year",#
+    y = "Cumulative Contributions / Portfolio Value"#
+  ) +#
+  theme_minimal(base_size = 13)
+library(dplyr)#
+library(ggplot2)#
+#
+# Precompute first-year contributions#
+first_year_contrib <- 23768 + 7000 + 11500  # employee + Roth + employer match#
+initial_balance <- 193000#
+#
+# Compute cumulative contributions and portfolio value medians#
+simA_cum <- simA_long %>%#
+  group_by(Year) %>%#
+  summarize(MedianValue = quantile(Value, 0.5, na.rm = TRUE)) %>%#
+  mutate(#
+    # assume contributions are monthly * 12, growing with salary#
+    annual_contrib = monthly_contrib * 12 * ((1 + annual_raise_pct)^(Year - 1)),#
+    cum_contrib = cumsum(annual_contrib),#
+    # adjust first year to include initial contributions#
+    cum_contrib = ifelse(Year == 1, first_year_contrib, cum_contrib + first_year_contrib),#
+    contrib_effect = cum_contrib / MedianValue#
+  )#
+#
+ggplot(simA_cum, aes(x = Year, y = contrib_effect)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(#
+    title = "Cumulative Contribution Effect (Median)",#
+    x = "Year",#
+    y = "Cumulative Contributions / Portfolio Value"#
+  ) +#
+  theme_minimal(base_size = 13)
+# cumulative contributions (deterministic or first-year adjusted)#
+first_year_contrib <- 23768 + 7000 + 11500#
+annual_contribs <- monthly_contrib * 12 * ((1 + annual_raise_pct)^(0:(accumulation_years-1)))#
+#
+cum_contrib <- cumsum(c(first_year_contrib, annual_contribs[-1]))  # include first-year adjustment#
+deterministic_values <- accum_det[-1]  # deterministic accumulation series excluding initial year#
+#
+contrib_effect_det <- cum_contrib / deterministic_values#
+#
+df <- tibble(#
+  Year = 1:accumulation_years,#
+  contrib_effect = contrib_effect_det#
+)#
+#
+ggplot(df, aes(x = Year, y = contrib_effect)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(#
+    title = "Contribution Effect (Deterministic / Monotonic)",#
+    x = "Year",#
+    y = "Cumulative Contributions / Portfolio Value"#
+  ) +#
+  theme_minimal(base_size = 13)
+needed_at_retirement <- sim_spend_all %>%#
+  filter(Year == 1) %>%  # Year 1 of spend-down#
+  group_by(Portfolio) %>%#
+  summarize(PV = Value, .groups="drop")#
+#
+ggplot(needed_at_retirement, aes(x = Portfolio, y = PV, fill=Portfolio)) +#
+  geom_boxplot(alpha=0.4) +#
+  scale_y_continuous(labels=scales::dollar_format()) +#
+  labs(title="Distribution of Simulated Portfolio\nat Retirement (Required to Sustain\nSpending)",#
+       x="Portfolio", y="Portfolio Value") +#
+  theme_minimal()
+tickers <- c("QCSTIX", "IEFA", "VEXAX", "VOO", "VNQ", "VVIAX", "VIGAX")#
+accumulation_years <- 30#
+spend_years <- 30#
+#
+initial_value <- 193000 # 11/2025 snapshot#
+current_salary <- 87500#
+annual_raise_pct <- 0.02#
+monthly_contrib <- 2326 # This is effectively including a Roth IRA but not extra summer salary contributions. These are effectively interchangable because they are similar in magnitude relative to base salary.#
+contrib_grows_with_salary <- TRUE#
+percent_retirement_income <- 0.8#
+#
+inflation_rate <- 0.03    # bearish; used only to convert historical returns to real, and for deterministic PV calc#
+#
+risk_tolerance <- "aggressive"#
+#
+if (risk_tolerance == "aggressive") {#
+	lower_bounds <- c(0.10, 0.05, 0.05, 0.20, 0.05, 0.10, 0.15)#
+	upper_bounds <- c(0.25, 0.20, 0.15, 0.40, 0.10, 0.25, 0.30)#
+} else if (risk_tolerance == "moderate") {#
+	lower_bounds <- c(0.05, 0.05, 0.03, 0.25, 0.03, 0.08, 0.10)#
+	upper_bounds <- c(0.15, 0.15, 0.10, 0.35, 0.08, 0.20, 0.20)#
+} else {#
+	lower_bounds <- c(0.02, 0.03, 0.02, 0.20, 0.02, 0.05, 0.05)#
+	upper_bounds <- c(0.10, 0.10, 0.05, 0.30, 0.05, 0.10, 0.10)#
+}#
+#
+# Drawdown (per-year stochastic drawdown)#
+use_drawdown_sim <- TRUE#
+drawdown_magnitude <- -0.37#
+drawdown_freq <- 0.03     # probability per year a severe drawdown replaces that year's portfolio return#
+#
+# =========================#
+# Social Security (hard-coded - placed here with other inputs)#
+# =========================#
+use_social_security <- TRUE#
+ss_monthly <- 3088            # real dollars per month (hard-coded)#
+ss_claim_age <- 67#
+ss_current_age <- 38#
+#
+# =========================#
+# Historical stats (pull prices, compute annual real log returns)#
+# =========================#
+start_date <- as.Date("2010-01-01")#
+end_date <- Sys.Date()#
+#
+# fetch adjusted close and fill NA by linear interpolation where needed#
+prices_list <- lapply(tickers, function(tkr) {#
+	prc <- getSymbols(tkr, from=start_date, to=end_date, auto.assign=FALSE)[,6]#
+	prc <- na.approx(prc, na.rm=FALSE)#
+	return(prc)#
+})#
+#
+# align to common dates (drop dates not present in all series)#
+common_dates <- Reduce(intersect, lapply(prices_list, index))#
+prices_list <- lapply(prices_list, function(prc) prc[common_dates])#
+#
+# compute annual log returns & convert to "real" by subtracting inflation_rate#
+annual_returns <- lapply(prices_list, function(prc) {#
+	prc_yearly <- to.yearly(prc, indexAt="lastof", OHLC=FALSE)#
+	log_ret <- diff(log(prc_yearly))                  # yearly log returns#
+	as.numeric(log_ret) - inflation_rate              # real returns as numeric vector#
+})#
+#
+stats <- tibble(#
+	Security = tickers,#
+	MeanReturn = sapply(annual_returns, mean, na.rm=TRUE),#
+	SDReturn   = sapply(annual_returns, sd, na.rm=TRUE)#
+)#
+#
+print(stats)#
+#
+# =========================#
+# Base portfolios#
+# =========================#
+portfolioA <- tibble(Security = tickers,#
+					 Weight   = c(0.36, 0.24, 0.12, 0.11, 0.08, 0.06, 0.03)) %>%#
+	left_join(stats, by = "Security")#
+#
+portfolioB <- tibble(Security = tickers,#
+					 Weight   = c(0, 0.125, 0.125, 0.5, 0.1, 0.15, 0)) %>%#
+	left_join(stats, by = "Security")#
+#
+# =========================#
+# Monte Carlo simulation function#
+# =========================#
+simulate_portfolio <- function(portfolio, years, n_sim = 1000,#
+		initial_value,#
+		current_salary,#
+		annual_raise_pct,#
+		monthly_contrib,#
+		contrib_grows_with_salary = TRUE,#
+		spend_down = FALSE,#
+		percent_retirement_income = 0.8,#
+		use_drawdown_sim = TRUE,#
+		drawdown_freq = 0.03,#
+		drawdown_magnitude = -0.37,#
+		ss_monthly = 0,#
+		ss_claim_age = 67,#
+		ss_current_age = 38) {#
+#
+	n_assets <- nrow(portfolio)#
+	res_mat <- matrix(0, nrow = n_sim, ncol = years)#
+#
+	if (is.null(monthly_contrib) && !spend_down) {#
+		stop("Provide monthly_contrib for accumulation phase (or set spend_down=TRUE).")#
+	}#
+#
+	for (sim in 1:n_sim) {#
+		value <- initial_value#
+		salary <- current_salary#
+#
+		for (year in 1:years) {#
+			# simulate asset returns (real)#
+			rand_rets <- rnorm(n_assets, portfolio$MeanReturn, portfolio$SDReturn)#
+			port_ret  <- sum(portfolio$Weight * rand_rets)#
+#
+			# apply stochastic drawdown for THIS YEAR on THIS PATH#
+			if (use_drawdown_sim && (runif(1) < drawdown_freq)) {#
+				port_ret <- drawdown_magnitude#
+			}#
+#
+			if (!spend_down) {#
+				# accumulation: contributions in real dollars#
+				if (contrib_grows_with_salary) {#
+					annual_contrib <- (monthly_contrib * 12) * ((1 + annual_raise_pct)^(year - 1))#
+				} else {#
+					annual_contrib <- monthly_contrib * 12#
+				}#
+				value <- value * (1 + port_ret) + annual_contrib#
+				salary <- salary * (1 + annual_raise_pct)#
+			} else {#
+				# spend-down: withdrawals are based on the retirement salary passed in as current_salary argument#
+				# monthly withdrawal target (real dollars)#
+				monthly_withdrawal <- (salary * percent_retirement_income) / 12#
+#
+				# social security in months after claiming#
+				years_since_now_to_claim <- ss_claim_age - ss_current_age#
+				# if the retirement-phase year index (1 = first retirement year) is >= years_until_claim then apply SS#
+				if (use_social_security && (year >= years_since_now_to_claim)) {#
+					ss_income_monthly <- ss_monthly#
+				} else {#
+					ss_income_monthly <- 0#
+				}#
+#
+				# withdraw from portfolio only the net after SS#
+				monthly_portfolio_withdraw <- max(monthly_withdrawal - ss_income_monthly, 0)#
+#
+				# apply return then withdrawal (monthly units are treated as annual lumps here: we subtract 12*monthly)#
+				value <- max(value * (1 + port_ret) - monthly_portfolio_withdraw * 12, 0)#
+			}#
+#
+			res_mat[sim, year] <- value#
+		} # year#
+	} # sim#
+#
+	colnames(res_mat) <- paste0("Year_", 1:years)#
+	as.data.frame(res_mat)#
+}#
+#
+# =========================#
+# Candidate portfolio (tail-risk aware optimizer)#
+# =========================#
+n_candidates <- 2000#
+set.seed(123)#
+#
+candidate_weights <- lapply(1:n_candidates, function(i) {#
+	# draw random weights within bounds, then normalize#
+	w_raw <- lower_bounds + runif(length(lower_bounds)) * (upper_bounds - lower_bounds)#
+	w <- w_raw / sum(w_raw)#
+	return(w)#
+})#
+#
+scores <- sapply(candidate_weights, function(w) {#
+	port <- tibble(Security = tickers, Weight = w) %>% left_join(stats, by = "Security")#
+	sim  <- simulate_portfolio(portfolio = port,#
+		years = accumulation_years,#
+		n_sim = 500,#
+		initial_value = initial_value,#
+		current_salary = current_salary,#
+		annual_raise_pct = annual_raise_pct,#
+		monthly_contrib = monthly_contrib,#
+		contrib_grows_with_salary = contrib_grows_with_salary,#
+		spend_down = FALSE,#
+		use_drawdown_sim = use_drawdown_sim,#
+		drawdown_freq = drawdown_freq,#
+		drawdown_magnitude = drawdown_magnitude,#
+		ss_monthly = ss_monthly,#
+		ss_claim_age = ss_claim_age,#
+		ss_current_age = ss_current_age)#
+	# score by 10th percentile to favor tail protection#
+	return(quantile(sim[[accumulation_years]], 0.1, na.rm = TRUE))#
+})#
+#
+best_idx <- which.max(scores)#
+best_weights <- candidate_weights[[best_idx]]#
+best_portfolio <- tibble(Security = tickers, Weight = best_weights) %>% left_join(stats, by = "Security")#
+#
+print("Best portfolio (tail-aware):")#
+print(best_portfolio)#
+#
+# =========================#
+# Simulate accumulation (Monte Carlo) for the three portfolios#
+# =========================#
+simA <- simulate_portfolio(portfolio = portfolioA,#
+	years = accumulation_years,#
+	n_sim = 1000,#
+	initial_value = initial_value,#
+	current_salary = current_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	monthly_contrib = monthly_contrib,#
+	contrib_grows_with_salary = contrib_grows_with_salary,#
+	spend_down = FALSE,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+simB <- simulate_portfolio(portfolio = portfolioB,#
+	years = accumulation_years,#
+	n_sim = 1000,#
+	initial_value = initial_value,#
+	current_salary = current_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	monthly_contrib = monthly_contrib,#
+	contrib_grows_with_salary = contrib_grows_with_salary,#
+	spend_down = FALSE,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+sim_candidate <- simulate_portfolio(portfolio = best_portfolio,#
+	years = accumulation_years,#
+	n_sim = 1000,#
+	initial_value = initial_value,#
+	current_salary = current_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	monthly_contrib = monthly_contrib,#
+	contrib_grows_with_salary = contrib_grows_with_salary,#
+	spend_down = FALSE,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+# =========================#
+# Transform MC results for plotting#
+# =========================#
+sim_to_long <- function(sim_df, portfolio_name) {#
+	sim_df %>%#
+		mutate(Sim = 1:n()) %>%#
+		pivot_longer(starts_with("Year_"), names_to = "Year", values_to = "Value") %>%#
+		mutate(Year = as.numeric(sub("Year_", "", Year)), Portfolio = portfolio_name)#
+}#
+#
+simA_long <- sim_to_long(simA, "A")#
+simB_long <- sim_to_long(simB, "B")#
+sim_candidate_long <- sim_to_long(sim_candidate, "Candidate")#
+#
+sim_all <- bind_rows(simA_long, simB_long, sim_candidate_long)#
+#
+ci_lines <- sim_all %>%#
+	group_by(Portfolio, Year) %>%#
+	summarize(MedianValue = quantile(Value, 0.5, na.rm = TRUE),#
+		  Lower = quantile(Value, 0.05, na.rm = TRUE),#
+		  Upper = quantile(Value, 0.95, na.rm = TRUE),#
+		  .groups = "drop")#
+#
+ylim_vals <- range(ci_lines$Lower, ci_lines$Upper, na.rm = TRUE)#
+#
+ggplot(ci_lines, aes(x = Year, group = Portfolio)) +#
+	geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Portfolio), alpha = 0.2) +#
+	geom_line(aes(y = MedianValue, color = Portfolio), linewidth = 1.2) +#
+	scale_color_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_fill_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_y_continuous(labels = scales::dollar_format(), limits = ylim_vals) +#
+	labs(title = "30-Year Accumulation (Real Dollars, 90% CI, Median)",#
+	     x = "Year",#
+	     y = "Portfolio Value") +#
+	theme_minimal()
+# Helper: handle vector of starting balances per simulation#
+simulate_spenddown <- function(sim_accum_df, portfolio, years_spend, n_sim,#
+	current_salary, annual_raise_pct,#
+	percent_retirement_income,#
+	use_drawdown_sim, drawdown_freq, drawdown_magnitude,#
+	ss_monthly, ss_claim_age, ss_current_age) {#
+n_paths <- nrow(sim_accum_df)#
+res_mat <- matrix(0, nrow = n_paths, ncol = years_spend)#
+# final salary in retirement#
+final_salary <- current_salary#
+#
+for(sim in 1:n_paths){#
+	value <- sim_accum_df[sim, ncol(sim_accum_df)]  # last year of accumulation for this path#
+	salary <- final_salary#
+	for(year in 1:years_spend){#
+		# simulate returns#
+		rand_rets <- rnorm(nrow(portfolio), portfolio$MeanReturn, portfolio$SDReturn)#
+		port_ret <- sum(portfolio$Weight * rand_rets)#
+		if(use_drawdown_sim && runif(1) < drawdown_freq){#
+			port_ret <- drawdown_magnitude#
+		}#
+		# monthly withdrawal target#
+		monthly_withdrawal <- (salary * percent_retirement_income) / 12#
+		years_since_now_to_claim <- ss_claim_age - ss_current_age#
+			ss_income_monthly <- if(use_social_security && (year >= years_since_now_to_claim)) ss_monthly else 0#
+			monthly_portfolio_withdraw <- max(monthly_withdrawal - ss_income_monthly, 0)#
+			# apply portfolio return then withdrawal#
+			value <- max(value * (1 + port_ret) - monthly_portfolio_withdraw * 12, 0)#
+			res_mat[sim, year] <- value#
+		}#
+	}#
+	colnames(res_mat) <- paste0("Year_", 1:years_spend)#
+	as.data.frame(res_mat)#
+}#
+#
+# Apply to all portfolios#
+simA_spend <- simulate_spenddown(simA, portfolioA, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+simB_spend <- simulate_spenddown(simB, portfolioB, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+sim_candidate_spend <- simulate_spenddown(sim_candidate, best_portfolio, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+# Transform for plotting#
+sim_spend_all <- bind_rows(sim_to_long(simA_spend, "A"),#
+	sim_to_long(simB_spend, "B"),#
+	sim_to_long(sim_candidate_spend, "Candidate"))#
+#
+ci_spend <- sim_spend_all %>%#
+	group_by(Portfolio, Year) %>%#
+	summarize(MedianValue = quantile(Value, 0.5, na.rm = TRUE),#
+	Lower = quantile(Value, 0.05, na.rm = TRUE),#
+	Upper = quantile(Value, 0.95, na.rm = TRUE),#
+	.groups = "drop")#
+#
+ylim_vals_spend <- range(ci_spend$Lower, ci_spend$Upper, na.rm = TRUE)#
+#
+ggplot(ci_spend, aes(x = Year, group = Portfolio)) +#
+	geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Portfolio), alpha = 0.2) +#
+	geom_line(aes(y = MedianValue, color = Portfolio), linewidth = 1.2) +#
+	scale_color_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_fill_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_y_continuous(labels = scales::dollar_format(), limits = ylim_vals_spend) +#
+	labs(title = "30-Year Spend-Down (Real Dollars, 90% CI, Median)",#
+		x = "Year",#
+		y = "Portfolio Value") +#
+	theme_minimal()
+compute_median_retirement_income <- function(sim_spend_df, desired_withdrawal, use_social_security = TRUE,#
+					     ss_monthly = 0, ss_start_year = 0) {#
+	sim_mat <- as.matrix(sim_spend_df)#
+	funded <- apply(sim_mat, 1, function(path_vals) {#
+		prev_vals <- c(NA, path_vals[-length(path_vals)])#
+		diffs <- prev_vals - path_vals#
+		diffs[is.na(diffs)] <- 0#
+#
+		# adjust diffs by social security once SS starts (monthly->annual)#
+		adjusted_diffs <- sapply(1:length(diffs), function(i) {#
+			portfolio_withdrawal <- diffs[i]#
+			if (use_social_security && i >= ss_start_year) {#
+				portfolio_withdrawal <- max(portfolio_withdrawal - ss_monthly * 12, 0)#
+			}#
+			return(portfolio_withdrawal)#
+		})#
+#
+		avg_possible <- mean(pmax(0, adjusted_diffs))#
+		return(min(desired_withdrawal, avg_possible))#
+	})#
+	median(funded, na.rm = TRUE)#
+}#
+#
+desired_withdrawal <- final_salary * percent_retirement_income#
+ss_start_year <- ss_claim_age - ss_current_age#
+#
+median_income_A <- compute_median_retirement_income(simA_spend, desired_withdrawal,#
+	use_social_security = use_social_security,#
+	ss_monthly = ss_monthly,#
+	ss_start_year = ss_start_year)#
+median_income_B <- compute_median_retirement_income(simB_spend, desired_withdrawal,#
+	use_social_security = use_social_security,#
+	ss_monthly = ss_monthly,#
+	ss_start_year = ss_start_year)#
+median_income_C <- compute_median_retirement_income(sim_candidate_spend, desired_withdrawal,#
+	use_social_security = use_social_security,#
+	ss_monthly = ss_monthly,#
+	ss_start_year = ss_start_year)#
+#
+annual_ss <- if (use_social_security) ss_monthly * 12 else 0#
+#
+median_income_df <- tibble(#
+	Portfolio = c("A", "B", "Candidate"),#
+	MedianAnnualIncome = c(median_income_A, median_income_B, median_income_C) + annual_ss#
+)#
+#
+median_income_df %>%#
+	mutate(MedianAnnualIncome = scales::dollar(MedianAnnualIncome))
+current_age <- 37#
+retirement_age <- 67#
+life_expectancy_age <- 90#
+current_savings_det <- initial_value # intentionally same as MC initial_value#
+annual_salary_det <- current_salary#
+employee_contrib_pct <- 0.09 + (7000/current_salary) # Second bit is Roth IRA contribution. We assume it scales with my salary in the future#
+employer_match_pct <- 0.149#
+expected_return_nominal<- 0.06#
+salary_growth_rate <- 0.02#
+inflation_rate_det <- 0.03#
+retirement_spend_pct <- 0.8#
+other_income_annual <- ss_monthly * 12 # Social Security annualized (hard-coded)#
+#
+years_to_retire <- retirement_age - current_age#
+years_in_retirement <- life_expectancy_age - retirement_age#
+#
+annual_contrib0 <- annual_salary_det * (employee_contrib_pct + employer_match_pct)#
+g <- salary_growth_rate#
+r <- expected_return_nominal#
+n <- years_to_retire#
+#
+# FV of initial principal (deterministic)#
+fv_initial <- current_savings_det * (1 + r)^n # FV=PV×(1+g)^n future value of a growing series#
+#
+# FV of growing annual contributions (deterministic)#
+fv_contrib <- sum(sapply(0:(n - 1), function(t) {#
+	annual_contrib0 * (1 + g)^t * (1 + r)^(n - 1 - t)#
+}))#
+#
+fv_total <- fv_initial + fv_contrib#
+final_balance_det <- fv_total#
+final_salary_det <- annual_salary_det * (1 + g)^n#
+#
+# Spend-down deterministic (real returns assumption: remove inflation from nominal expected return)#
+real_ret_rate <- r - inflation_rate_det#
+if (is.na(real_ret_rate) || real_ret_rate == 0) {#
+	stop("Check r and inflation_rate_det.")#
+}#
+#
+annual_withdrawal_det <- final_salary_det * retirement_spend_pct#
+net_annual_withdrawal_det <- max(annual_withdrawal_det - other_income_annual, 0)#
+#
+# PV (at retirement) required to support net_annual_withdrawal_det for years_in_retirement at real_ret_rate#
+need_at_retirement_det <- net_annual_withdrawal_det * ((1 - (1 + real_ret_rate)^(-years_in_retirement)) / real_ret_rate)#
+#
+gap_det <- final_balance_det - need_at_retirement_det#
+#
+cat("Deterministic NerdWallet-clone results\n")#
+cat("  Final balance (fv_total):", scales::dollar(final_balance_det), "\n")#
+cat("  Needed at retirement (PV of net withdrawals):", scales::dollar(need_at_retirement_det), "\n")#
+cat("  Gap (have - need):", scales::dollar(gap_det), "\n\n")#
+#
+# Build deterministic accumulation & retirement series (for combined plot)#
+accum_det <- numeric(n + 1)#
+accum_det[1] <- current_savings_det#
+for (t in 2:(n + 1)) {#
+	accum_det[t] <- accum_det[t - 1] * (1 + r) + annual_contrib0 * (1 + g)^(t - 2)#
+}#
+# retirement deterministic series#
+retire_det <- numeric(years_in_retirement + 1)#
+retire_det[1] <- final_balance_det#
+for (t in 2:(years_in_retirement + 1)) {#
+	retire_det[t] <- retire_det[t - 1] * (1 + real_ret_rate) - net_annual_withdrawal_det#
+	if (retire_det[t] < 0) retire_det[t] <- 0#
+}#
+#
+# combine for chart (no jump at retirement)#
+years_total_det <- current_age:(life_expectancy_age)#
+values_total_det <- c(accum_det, retire_det[-1])#
+phase_det <- c(rep("Accumulation", length(accum_det)), rep("Retirement", length(retire_det) - 1))#
+#
+combined_det_df <- tibble(Year = years_total_det,#
+			  PortfolioValue = values_total_det,#
+			  Phase = phase_det)#
+#
+ggplot(combined_det_df, aes(x = Year, y = PortfolioValue, color = Phase)) +#
+	geom_line(linewidth = 1.2) +#
+	geom_vline(xintercept = retirement_age, linetype = "dashed", color = "gray50") +#
+	scale_y_continuous(labels = scales::dollar_format()) +#
+	scale_color_manual(values = c("Accumulation" = "#1f77b4", "Retirement" = "#d62728")) +#
+	labs(title = "Deterministic (NerdWallet-style) Projection",#
+	     subtitle = paste0("Other income (annual): ", scales::dollar(other_income_annual)),#
+	     x = "Age", y = "Portfolio Value") +#
+	theme_minimal(base_size = 13) +#
+	theme(legend.position = "top")
+# Parameters#
+years <- 30#
+monthly_contrib <- 2326#
+annual_contrib <- monthly_contrib * 12#
+contrib_growth <- 0.02   # annual increase in contributions#
+nominal_return <- 0.09   # 9% nominal -- in the current environment translates to 6% real which is reasonable for sp500#
+initial_value <- 193000#
+# These numbers will yield a 50% inflection point at about year 12#
+#
+# Initialize vectors#
+FV_total <- numeric(years)#
+FV_contrib_only <- numeric(years)#
+contrib_fraction <- numeric(years)#
+#
+FV_total[1] <- initial_value * (1 + nominal_return) + annual_contrib#
+FV_contrib_only[1] <- initial_value + annual_contrib#
+contrib_fraction[1] <- FV_contrib_only[1] / FV_total[1]#
+#
+for (t in 2:years) {#
+  annual_contrib_t <- annual_contrib * (1 + contrib_growth)^(t - 1)#
+  # total FV with market returns#
+  FV_total[t] <- FV_total[t - 1] * (1 + nominal_return) + annual_contrib_t#
+  # FV if returns = 0 (just contributions)#
+  FV_contrib_only[t] <- FV_contrib_only[t - 1] + annual_contrib_t#
+  # fraction due to contributions#
+  contrib_fraction[t] <- FV_contrib_only[t] / FV_total[t]#
+}#
+#
+# Plot#
+library(ggplot2)#
+#
+df <- data.frame(#
+  Year = 1:years,#
+  ContributionFraction = contrib_fraction#
+)#
+#
+ggplot(df, aes(x = Year, y = ContributionFraction)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(title = "Effect of Contributions vs. Market Compounding",#
+       y = "Fraction of Total FV Due to Contributions",#
+       x = "Year") +#
+  theme_minimal(base_size = 13)
+# Calculate median portfolio value per year#
+ci_median <- simA_long %>%#
+  group_by(Year) %>%#
+  summarize(MedianValue = median(Value, na.rm = TRUE))#
+#
+# Initial principal, contributions per year#
+initial_principal <- 193000#
+annual_contrib <- 2326 * 12#
+annual_raise_pct <- 0.02#
+years <- max(simA_long$Year)#
+#
+# Compute cumulative contributions (real, growing with salary)#
+cumulative_contrib <- sapply(1:years, function(t) {#
+  sum(annual_contrib * (1 + annual_raise_pct)^(0:(t - 1)))#
+})#
+#
+# Fraction of total FV due to contributions#
+fraction_contrib <- cumulative_contrib / ci_median$MedianValue#
+#
+plot_df <- tibble(#
+  Year = ci_median$Year,#
+  FractionContributions = fraction_contrib#
+)#
+#
+ggplot(plot_df, aes(x = Year, y = FractionContributions)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(title = "Fraction of Median Portfolio FV Due to Contributions",#
+       x = "Year",#
+       y = "Fraction of Total FV") +#
+  theme_minimal()
+# 1. Compute cumulative contributions (real dollars)#
+annual_contrib <- monthly_contrib * 12#
+if (contrib_grows_with_salary) {#
+  contrib_matrix <- sapply(1:accumulation_years, function(y) annual_contrib * ((1 + annual_raise_pct)^(y-1)))#
+} else {#
+  contrib_matrix <- matrix(annual_contrib, nrow = nrow(simA), ncol = accumulation_years, byrow = TRUE)#
+}#
+#
+# 2. Cumulative contributions over time#
+cumulative_contrib <- t(apply(contrib_matrix, 1, cumsum))#
+#
+# 3. Fraction of median portfolio due to contributions#
+median_portfolio <- simA %>%#
+  summarise(across(everything(), ~quantile(.x, 0.5))) %>%#
+  as.numeric()#
+#
+fraction_due_to_contrib <- apply(cumulative_contrib, 2, median) / median_portfolio#
+#
+# 4. Plot#
+df <- tibble(#
+  Year = 1:accumulation_years,#
+  FractionContrib = fraction_due_to_contrib#
+)#
+#
+ggplot(df, aes(x = Year, y = FractionContrib)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(#
+    title = "Fraction of Total Portfolio FV Due to Contributions (Median Path)",#
+    x = "Year",#
+    y = "Fraction of Portfolio Value"#
+  ) +#
+  theme_minimal(base_size = 13)
+# Number of simulations#
+n_sim <- nrow(simA)#
+#
+# 1. Compute annual contributions for each year#
+annual_contrib_vector <- monthly_contrib * 12 * if (contrib_grows_with_salary) {#
+  (1 + annual_raise_pct)^(0:(accumulation_years - 1))#
+} else {#
+  rep(1, accumulation_years)#
+}#
+#
+# 2. Repeat contributions across simulations#
+contrib_matrix <- matrix(rep(annual_contrib_vector, each = n_sim),#
+                         nrow = n_sim, ncol = accumulation_years)#
+#
+# 3. Cumulative contributions over time#
+cumulative_contrib <- t(apply(contrib_matrix, 1, cumsum))#
+#
+# 4. Median portfolio over years#
+median_portfolio <- apply(simA, 2, median)#
+#
+# 5. Fraction of median portfolio due to contributions#
+fraction_due_to_contrib <- apply(cumulative_contrib, 2, median) / median_portfolio#
+#
+# 6. Plot#
+df <- tibble(#
+  Year = 1:accumulation_years,#
+  FractionContrib = fraction_due_to_contrib#
+)#
+#
+ggplot(df, aes(x = Year, y = FractionContrib)) +#
+  geom_line(color = "#2ca02c", linewidth = 1.2) +#
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +#
+  labs(#
+    title = "Fraction of Total Portfolio FV Due to Contributions (Median Path)",#
+    x = "Year",#
+    y = "Fraction of Portfolio Value"#
+  ) +#
+  theme_minimal(base_size = 13)
+# =========================#
+# Libraries#
+# =========================#
+library(quantmod)#
+library(dplyr)#
+library(tidyr)#
+library(ggplot2)#
+library(scales)#
+library(tibble)#
+library(zoo)    # na.approx#
+#
+# =============================================#
+# 30-Year Monte Carlo Retirement Simulation Script (fixed, cleaned)#
+# =============================================#
+#
+# =========================#
+# Contribution Logic (Real Dollars)#
+# =========================#
+# All portfolio values, returns, and contributions are modeled in real (inflation-adjusted) dollars.#
+# Monthly contributions are converted to annual contributions and optionally scaled by salary growth.#
+# Social Security / other income only affects spend-down withdrawals, not accumulation.#
+#
+# =========================#
+# User Inputs#
+# =========================#
+tickers <- c("QCSTIX", "IEFA", "VEXAX", "VOO", "VNQ", "VVIAX", "VIGAX")#
+accumulation_years <- 30#
+spend_years <- 30#
+#
+initial_value <- 193000 # 11/2025 snapshot#
+current_salary <- 87500#
+annual_raise_pct <- 0.02#
+monthly_contrib <- 2326 # This is effectively including a Roth IRA but not extra summer salary contributions. These are effectively interchangable because they are similar in magnitude relative to base salary.#
+contrib_grows_with_salary <- TRUE#
+percent_retirement_income <- 0.8#
+#
+inflation_rate <- 0.03    # bearish; used only to convert historical returns to real, and for deterministic PV calc#
+#
+risk_tolerance <- "aggressive"#
+#
+if (risk_tolerance == "aggressive") {#
+	lower_bounds <- c(0.10, 0.05, 0.05, 0.20, 0.05, 0.10, 0.15)#
+	upper_bounds <- c(0.25, 0.20, 0.15, 0.40, 0.10, 0.25, 0.30)#
+} else if (risk_tolerance == "moderate") {#
+	lower_bounds <- c(0.05, 0.05, 0.03, 0.25, 0.03, 0.08, 0.10)#
+	upper_bounds <- c(0.15, 0.15, 0.10, 0.35, 0.08, 0.20, 0.20)#
+} else {#
+	lower_bounds <- c(0.02, 0.03, 0.02, 0.20, 0.02, 0.05, 0.05)#
+	upper_bounds <- c(0.10, 0.10, 0.05, 0.30, 0.05, 0.10, 0.10)#
+}	#
+# Drawdown (per-year stochastic drawdown)#
+use_drawdown_sim <- TRUE#
+drawdown_magnitude <- -0.37#
+drawdown_freq <- 0.03     # probability per year a severe drawdown replaces that year's portfolio return#
+#
+# =========================#
+# Social Security (hard-coded - placed here with other inputs)#
+# =========================#
+use_social_security <- TRUE#
+ss_monthly <- 3088            # real dollars per month (hard-coded)#
+ss_claim_age <- 67#
+ss_current_age <- 38#
+#
+# =========================#
+# Historical stats (pull prices, compute annual real log returns)#
+# =========================#
+start_date <- as.Date("2010-01-01")#
+end_date <- Sys.Date()#
+#
+# fetch adjusted close and fill NA by linear interpolation where needed#
+prices_list <- lapply(tickers, function(tkr) {#
+	prc <- getSymbols(tkr, from=start_date, to=end_date, auto.assign=FALSE)[,6]#
+	prc <- na.approx(prc, na.rm=FALSE)#
+	return(prc)#
+})#
+#
+# align to common dates (drop dates not present in all series)#
+common_dates <- Reduce(intersect, lapply(prices_list, index))#
+prices_list <- lapply(prices_list, function(prc) prc[common_dates])#
+#
+# compute annual log returns & convert to "real" by subtracting inflation_rate#
+annual_returns <- lapply(prices_list, function(prc) {#
+	prc_yearly <- to.yearly(prc, indexAt="lastof", OHLC=FALSE)#
+	log_ret <- diff(log(prc_yearly))                  # yearly log returns#
+	as.numeric(log_ret) - inflation_rate              # real returns as numeric vector#
+})#
+#
+stats <- tibble(#
+	Security = tickers,#
+	MeanReturn = sapply(annual_returns, mean, na.rm=TRUE),#
+	SDReturn   = sapply(annual_returns, sd, na.rm=TRUE)#
+)#
+#
+print(stats)#
+#
+# =========================#
+# Base portfolios#
+# =========================#
+portfolioA <- tibble(Security = tickers,#
+					 Weight   = c(0.36, 0.24, 0.12, 0.11, 0.08, 0.06, 0.03)) %>%#
+	left_join(stats, by = "Security")#
+#
+portfolioB <- tibble(Security = tickers,#
+					 Weight   = c(0, 0.125, 0.125, 0.5, 0.1, 0.15, 0)) %>%#
+	left_join(stats, by = "Security")#
+#
+# =========================#
+# Monte Carlo simulation function#
+# =========================#
+simulate_portfolio <- function(portfolio, years, n_sim = 1000,#
+		initial_value,#
+		current_salary,#
+		annual_raise_pct,#
+		monthly_contrib,#
+		contrib_grows_with_salary = TRUE,#
+		spend_down = FALSE,#
+		percent_retirement_income = 0.8,#
+		use_drawdown_sim = TRUE,#
+		drawdown_freq = 0.03,#
+		drawdown_magnitude = -0.37,#
+		ss_monthly = 0,#
+		ss_claim_age = 67,#
+		ss_current_age = 38) {#
+#
+	n_assets <- nrow(portfolio)#
+	res_mat <- matrix(0, nrow = n_sim, ncol = years)#
+#
+	if (is.null(monthly_contrib) && !spend_down) {#
+		stop("Provide monthly_contrib for accumulation phase (or set spend_down=TRUE).")#
+	}#
+#
+	for (sim in 1:n_sim) {#
+		value <- initial_value#
+		salary <- current_salary#
+#
+		for (year in 1:years) {#
+			# simulate asset returns (real)#
+			rand_rets <- rnorm(n_assets, portfolio$MeanReturn, portfolio$SDReturn)#
+			port_ret  <- sum(portfolio$Weight * rand_rets)#
+#
+			# apply stochastic drawdown for THIS YEAR on THIS PATH#
+			if (use_drawdown_sim && (runif(1) < drawdown_freq)) {#
+				port_ret <- drawdown_magnitude#
+			}#
+#
+			if (!spend_down) {#
+				# accumulation: contributions in real dollars#
+				if (contrib_grows_with_salary) {#
+					annual_contrib <- (monthly_contrib * 12) * ((1 + annual_raise_pct)^(year - 1))#
+				} else {#
+					annual_contrib <- monthly_contrib * 12#
+				}#
+				value <- value * (1 + port_ret) + annual_contrib#
+				salary <- salary * (1 + annual_raise_pct)#
+			} else {#
+				# spend-down: withdrawals are based on the retirement salary passed in as current_salary argument#
+				# monthly withdrawal target (real dollars)#
+				monthly_withdrawal <- (salary * percent_retirement_income) / 12#
+#
+				# social security in months after claiming#
+				years_since_now_to_claim <- ss_claim_age - ss_current_age#
+				# if the retirement-phase year index (1 = first retirement year) is >= years_until_claim then apply SS#
+				if (use_social_security && (year >= years_since_now_to_claim)) {#
+					ss_income_monthly <- ss_monthly#
+				} else {#
+					ss_income_monthly <- 0#
+				}#
+#
+				# withdraw from portfolio only the net after SS#
+				monthly_portfolio_withdraw <- max(monthly_withdrawal - ss_income_monthly, 0)#
+#
+				# apply return then withdrawal (monthly units are treated as annual lumps here: we subtract 12*monthly)#
+				value <- max(value * (1 + port_ret) - monthly_portfolio_withdraw * 12, 0)#
+			}#
+#
+			res_mat[sim, year] <- value#
+		} # year#
+	} # sim#
+#
+	colnames(res_mat) <- paste0("Year_", 1:years)#
+	as.data.frame(res_mat)#
+}#
+#
+# =========================#
+# Candidate portfolio (tail-risk aware optimizer)#
+# =========================#
+n_candidates <- 2000#
+set.seed(123)#
+#
+candidate_weights <- lapply(1:n_candidates, function(i) {#
+	# draw random weights within bounds, then normalize#
+	w_raw <- lower_bounds + runif(length(lower_bounds)) * (upper_bounds - lower_bounds)#
+	w <- w_raw / sum(w_raw)#
+	return(w)#
+})#
+#
+scores <- sapply(candidate_weights, function(w) {#
+	port <- tibble(Security = tickers, Weight = w) %>% left_join(stats, by = "Security")#
+	sim  <- simulate_portfolio(portfolio = port,#
+		years = accumulation_years,#
+		n_sim = 500,#
+		initial_value = initial_value,#
+		current_salary = current_salary,#
+		annual_raise_pct = annual_raise_pct,#
+		monthly_contrib = monthly_contrib,#
+		contrib_grows_with_salary = contrib_grows_with_salary,#
+		spend_down = FALSE,#
+		use_drawdown_sim = use_drawdown_sim,#
+		drawdown_freq = drawdown_freq,#
+		drawdown_magnitude = drawdown_magnitude,#
+		ss_monthly = ss_monthly,#
+		ss_claim_age = ss_claim_age,#
+		ss_current_age = ss_current_age)#
+	# score by 10th percentile to favor tail protection#
+	return(quantile(sim[[accumulation_years]], 0.1, na.rm = TRUE))#
+})#
+#
+best_idx <- which.max(scores)#
+best_weights <- candidate_weights[[best_idx]]#
+best_portfolio <- tibble(Security = tickers, Weight = best_weights) %>% left_join(stats, by = "Security")#
+#
+print("Best portfolio (tail-aware):")#
+print(best_portfolio)#
+#
+# =========================#
+# Simulate accumulation (Monte Carlo) for the three portfolios#
+# =========================#
+simA <- simulate_portfolio(portfolio = portfolioA,#
+	years = accumulation_years,#
+	n_sim = 1000,#
+	initial_value = initial_value,#
+	current_salary = current_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	monthly_contrib = monthly_contrib,#
+	contrib_grows_with_salary = contrib_grows_with_salary,#
+	spend_down = FALSE,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+simB <- simulate_portfolio(portfolio = portfolioB,#
+	years = accumulation_years,#
+	n_sim = 1000,#
+	initial_value = initial_value,#
+	current_salary = current_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	monthly_contrib = monthly_contrib,#
+	contrib_grows_with_salary = contrib_grows_with_salary,#
+	spend_down = FALSE,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+sim_candidate <- simulate_portfolio(portfolio = best_portfolio,#
+	years = accumulation_years,#
+	n_sim = 1000,#
+	initial_value = initial_value,#
+	current_salary = current_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	monthly_contrib = monthly_contrib,#
+	contrib_grows_with_salary = contrib_grows_with_salary,#
+	spend_down = FALSE,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+# =========================#
+# Transform MC results for plotting#
+# =========================#
+sim_to_long <- function(sim_df, portfolio_name) {#
+	sim_df %>%#
+		mutate(Sim = 1:n()) %>%#
+		pivot_longer(starts_with("Year_"), names_to = "Year", values_to = "Value") %>%#
+		mutate(Year = as.numeric(sub("Year_", "", Year)), Portfolio = portfolio_name)#
+}#
+#
+simA_long <- sim_to_long(simA, "A")#
+simB_long <- sim_to_long(simB, "B")#
+sim_candidate_long <- sim_to_long(sim_candidate, "Candidate")#
+#
+sim_all <- bind_rows(simA_long, simB_long, sim_candidate_long)#
+#
+ci_lines <- sim_all %>%#
+	group_by(Portfolio, Year) %>%#
+	summarize(MedianValue = quantile(Value, 0.5, na.rm = TRUE),#
+		  Lower = quantile(Value, 0.05, na.rm = TRUE),#
+		  Upper = quantile(Value, 0.95, na.rm = TRUE),#
+		  .groups = "drop")#
+#
+ylim_vals <- range(ci_lines$Lower, ci_lines$Upper, na.rm = TRUE)#
+#
+ggplot(ci_lines, aes(x = Year, group = Portfolio)) +#
+	geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Portfolio), alpha = 0.2) +#
+	geom_line(aes(y = MedianValue, color = Portfolio), linewidth = 1.2) +#
+	scale_color_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_fill_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_y_continuous(labels = scales::dollar_format(), limits = ylim_vals) +#
+	labs(title = "30-Year Accumulation (Real Dollars, 90% CI, Median)",#
+	     x = "Year",#
+	     y = "Portfolio Value") +#
+	theme_minimal()
+simA_wide <- simA_long %>%#
+  filter(Portfolio == "A") %>%#
+  pivot_wider(names_from = Year, values_from = Value) %>%#
+  select(-Portfolio)#
+#
+initial_value <- simA_long %>% filter(Portfolio == "A", Year == 1) %>% pull(Value) %>% median()#
+#
+# Function to get Nth doubling year#
+nth_doubling <- function(x, n, init) {#
+  years <- which(x >= 2^n * init)#
+  if(length(years) == 0) return(NA)#
+  return(years[1])#
+}#
+#
+doubling_times_df <- data.frame(#
+  First  = apply(simA_wide[,-1], 1, nth_doubling, n=1, init=initial_value),#
+  Second = apply(simA_wide[,-1], 1, nth_doubling, n=2, init=initial_value),#
+  Third  = apply(simA_wide[,-1], 1, nth_doubling, n=3, init=initial_value)#
+) %>%#
+  pivot_longer(everything(), names_to="Doubling", values_to="Year")#
+#
+# Median for reference#
+median_times <- doubling_times_df %>%#
+  group_by(Doubling) %>%#
+  summarize(MedianYear = median(Year, na.rm=TRUE))#
+#
+print(median_times)#
+#
+# Plot#
+ggplot(doubling_times_df, aes(x=Year, fill=Doubling)) +#
+  geom_histogram(binwidth=1, alpha=0.5, position="identity", color="white") +#
+  geom_vline(data=median_times, aes(xintercept=MedianYear, color=Doubling),#
+             linetype="dashed", size=1) +#
+  labs(title="Distributions of First, Second, and Third Doubling Times",#
+       x="Year",#
+       y="Frequency") +#
+  scale_fill_manual(values=c("#1f77b4", "#d62728", "#2ca02c")) +#
+  scale_color_manual(values=c("#1f77b4", "#d62728", "#2ca02c")) +#
+  theme_minimal()
+initial_value
+simulate_spenddown <- function(sim_accum_df, portfolio, spend_years, n_sim,#
+	current_salary, annual_raise_pct,#
+	percent_retirement_income,#
+	use_drawdown_sim, drawdown_freq, drawdown_magnitude,#
+	ss_monthly, ss_claim_age, ss_current_age) {#
+#
+	n_paths <- nrow(sim_accum_df)#
+	res_mat <- matrix(0, nrow = n_paths, ncol = spend_years)#
+	final_salary <- current_salary#
+#
+	for(sim in 1:n_paths){#
+		value <- sim_accum_df[sim, ncol(sim_accum_df)]#
+		salary <- final_salary#
+		for(year in 1:spend_years){#
+			rand_rets <- rnorm(nrow(portfolio), portfolio$MeanReturn, portfolio$SDReturn)#
+			port_ret <- sum(portfolio$Weight * rand_rets)#
+			if(use_drawdown_sim && runif(1) < drawdown_freq){#
+				port_ret <- drawdown_magnitude#
+			}#
+			monthly_withdrawal <- (salary * percent_retirement_income) / 12#
+			years_since_now_to_claim <- ss_claim_age - ss_current_age#
+			ss_income_monthly <- if(exists("use_social_security") && use_social_security && (year >= years_since_now_to_claim)) ss_monthly else 0#
+			monthly_portfolio_withdraw <- max(monthly_withdrawal - ss_income_monthly, 0)#
+			value <- max(value * (1 + port_ret) - monthly_portfolio_withdraw * 12, 0)#
+			res_mat[sim, year] <- value#
+		}#
+	}#
+	colnames(res_mat) <- paste0("Year_", 1:spend_years)#
+	as.data.frame(res_mat)#
+}#
+#
+# Apply to all portfolios#
+simA_spend <- simulate_spenddown(simA, portfolioA, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+simB_spend <- simulate_spenddown(simB, portfolioB, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+sim_candidate_spend <- simulate_spenddown(sim_candidate, best_portfolio, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+# Transform for plotting#
+sim_spend_all <- bind_rows(sim_to_long(simA_spend, "A"),#
+	sim_to_long(simB_spend, "B"),#
+	sim_to_long(sim_candidate_spend, "Candidate"))#
+#
+ci_spend <- sim_spend_all %>%#
+	group_by(Portfolio, Year) %>%#
+	summarize(MedianValue = quantile(Value, 0.5, na.rm = TRUE),#
+	Lower = quantile(Value, 0.05, na.rm = TRUE),#
+	Upper = quantile(Value, 0.95, na.rm = TRUE),#
+	.groups = "drop")#
+#
+ylim_vals_spend <- range(ci_spend$Lower, ci_spend$Upper, na.rm = TRUE)#
+#
+ggplot(ci_spend, aes(x = Year, group = Portfolio)) +#
+	geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Portfolio), alpha = 0.2) +#
+	geom_line(aes(y = MedianValue, color = Portfolio), linewidth = 1.2) +#
+	scale_color_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_fill_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_y_continuous(labels = scales::dollar_format(), limits = ylim_vals_spend) +#
+	labs(title = "30-Year Spend-Down (Real Dollars, 90% CI, Median)",#
+		x = "Year",#
+		y = "Portfolio Value") +#
+	theme_minimal()
+simulate_spenddown <- function(sim_accum_df, portfolio, spend_years, n_sim,#
+	current_salary, annual_raise_pct,#
+	percent_retirement_income,#
+	use_drawdown_sim, drawdown_freq, drawdown_magnitude,#
+	ss_monthly, ss_claim_age, ss_current_age) {#
+#
+	n_paths <- nrow(sim_accum_df)#
+	res_mat <- matrix(0, nrow = n_paths, ncol = spend_years)#
+	final_salary <- current_salary#
+#
+	for(sim in 1:n_paths){#
+		value <- sim_accum_df[sim, ncol(sim_accum_df)]#
+		salary <- final_salary#
+		for(year in 1:spend_years){#
+			rand_rets <- rnorm(nrow(portfolio), portfolio$MeanReturn, portfolio$SDReturn)#
+			port_ret <- sum(portfolio$Weight * rand_rets)#
+			if(use_drawdown_sim && runif(1) < drawdown_freq){#
+				port_ret <- drawdown_magnitude#
+			}#
+			monthly_withdrawal <- (salary * percent_retirement_income) / 12#
+			years_since_now_to_claim <- ss_claim_age - ss_current_age#
+			ss_income_monthly <- if(exists("use_social_security") && use_social_security && (year >= years_since_now_to_claim)) ss_monthly else 0#
+			monthly_portfolio_withdraw <- max(monthly_withdrawal - ss_income_monthly, 0)#
+			value <- max(value * (1 + port_ret) - monthly_portfolio_withdraw * 12, 0)#
+			res_mat[sim, year] <- value#
+		}#
+	}#
+	colnames(res_mat) <- paste0("Year_", 1:spend_years)#
+	as.data.frame(res_mat)#
+}
+simA_spend <- simulate_spenddown(simA, portfolioA, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)
+# Apply to all portfolios#
+final_salary <- current_salary * ((1 + annual_raise_pct)^accumulation_years)#
+#
+simA_spend <- simulate_spenddown(simA, portfolioA, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+simB_spend <- simulate_spenddown(simB, portfolioB, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)#
+#
+sim_candidate_spend <- simulate_spenddown(sim_candidate, best_portfolio, spend_years, n_sim = 1000,#
+	current_salary = final_salary,#
+	annual_raise_pct = annual_raise_pct,#
+	percent_retirement_income = percent_retirement_income,#
+	use_drawdown_sim = use_drawdown_sim,#
+	drawdown_freq = drawdown_freq,#
+	drawdown_magnitude = drawdown_magnitude,#
+	ss_monthly = ss_monthly,#
+	ss_claim_age = ss_claim_age,#
+	ss_current_age = ss_current_age)
+# Transform for plotting#
+sim_spend_all <- bind_rows(sim_to_long(simA_spend, "A"),#
+	sim_to_long(simB_spend, "B"),#
+	sim_to_long(sim_candidate_spend, "Candidate"))#
+#
+ci_spend <- sim_spend_all %>%#
+	group_by(Portfolio, Year) %>%#
+	summarize(MedianValue = quantile(Value, 0.5, na.rm = TRUE),#
+	Lower = quantile(Value, 0.05, na.rm = TRUE),#
+	Upper = quantile(Value, 0.95, na.rm = TRUE),#
+	.groups = "drop")#
+#
+ylim_vals_spend <- range(ci_spend$Lower, ci_spend$Upper, na.rm = TRUE)#
+#
+ggplot(ci_spend, aes(x = Year, group = Portfolio)) +#
+	geom_ribbon(aes(ymin = Lower, ymax = Upper, fill = Portfolio), alpha = 0.2) +#
+	geom_line(aes(y = MedianValue, color = Portfolio), linewidth = 1.2) +#
+	scale_color_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_fill_manual(values = c("A" = "#1f77b4", "B" = "#d62728", "Candidate" = "#2ca02c")) +#
+	scale_y_continuous(labels = scales::dollar_format(), limits = ylim_vals_spend) +#
+	labs(title = "30-Year Spend-Down (Real Dollars, 90% CI, Median)",#
+		x = "Year",#
+		y = "Portfolio Value") +#
+	theme_minimal()
+compute_median_retirement_income <- function(sim_spend_df, desired_withdrawal, use_social_security = TRUE,#
+					     ss_monthly = 0, ss_start_year = 0) {#
+	sim_mat <- as.matrix(sim_spend_df)#
+	funded <- apply(sim_mat, 1, function(path_vals) {#
+		prev_vals <- c(NA, path_vals[-length(path_vals)])#
+		diffs <- prev_vals - path_vals#
+		diffs[is.na(diffs)] <- 0#
+#
+		# adjust diffs by social security once SS starts (monthly->annual)#
+		adjusted_diffs <- sapply(1:length(diffs), function(i) {#
+			portfolio_withdrawal <- diffs[i]#
+			if (use_social_security && i >= ss_start_year) {#
+				portfolio_withdrawal <- max(portfolio_withdrawal - ss_monthly * 12, 0)#
+			}#
+			return(portfolio_withdrawal)#
+		})#
+#
+		avg_possible <- mean(pmax(0, adjusted_diffs))#
+		return(min(desired_withdrawal, avg_possible))#
+	})#
+	median(funded, na.rm = TRUE)#
+}#
+#
+desired_withdrawal <- final_salary * percent_retirement_income#
+ss_start_year <- ss_claim_age - ss_current_age#
+#
+median_income_A <- compute_median_retirement_income(simA_spend, desired_withdrawal,#
+	use_social_security = use_social_security,#
+	ss_monthly = ss_monthly,#
+	ss_start_year = ss_start_year)#
+median_income_B <- compute_median_retirement_income(simB_spend, desired_withdrawal,#
+	use_social_security = use_social_security,#
+	ss_monthly = ss_monthly,#
+	ss_start_year = ss_start_year)#
+median_income_C <- compute_median_retirement_income(sim_candidate_spend, desired_withdrawal,#
+	use_social_security = use_social_security,#
+	ss_monthly = ss_monthly,#
+	ss_start_year = ss_start_year)#
+#
+annual_ss <- if (use_social_security) ss_monthly * 12 else 0#
+#
+median_income_df <- tibble(#
+	Portfolio = c("A", "B", "Candidate"),#
+	MedianAnnualIncome = c(median_income_A, median_income_B, median_income_C) + annual_ss#
+)#
+#
+median_income_df %>%#
+	mutate(MedianAnnualIncome = scales::dollar(MedianAnnualIncome))
+library(RColorBrewer)#
+library(ggplot2)#
+library(stats)#
+library(rstatix)#
+library(ggpubr)#
+#
+#############################
+#### Import data#
+#############################
+#
+# ITS genera#
+#import biom file from kraken-biom#
+data <-import_biom("./biom_files_December2025/bracken_genera.ITS.biom", parseFunction = parse_taxonomy_default)#
+data@tax_table@.Data <- substring(data@tax_table@.Data, 4)#
+#rename columns to species level#
+colnames(data@tax_table@.Data)<- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+#I added a taxa to this that is likely a false positive from Kraken#
+data <- subset_taxa(data, (!Kingdom %in% "Viridiplantae")) # Plants#
+data <- subset_taxa(data, (!Kingdom %in% "Metazoa")) # Animals
+library(phyloseq)#
+library(vegan)#
+library(RColorBrewer)#
+library(ggplot2)#
+library(stats)#
+library(rstatix)#
+library(ggpubr)#
+#
+#############################
+#### Import data#
+#############################
+#
+# ITS genera#
+#import biom file from kraken-biom#
+data <-import_biom("./biom_files_December2025/bracken_genera.ITS.biom", parseFunction = parse_taxonomy_default)#
+data@tax_table@.Data <- substring(data@tax_table@.Data, 4)#
+#rename columns to species level#
+colnames(data@tax_table@.Data)<- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")
+#I added a taxa to this that is likely a false positive from Kraken#
+data <- subset_taxa(data, (!Kingdom %in% "Viridiplantae")) # Plants#
+data <- subset_taxa(data, (!Kingdom %in% "Metazoa")) # Animals#
+ps <- tax_glom(data, taxrank = "Genus", NArm = TRUE)#
+otu <- as(otu_table(ps), "matrix")
+data <-import_biom("./biom_files_targetcapture/bracken_genera.ITS_targetcapture.biom", parseFunction = parse_taxonomy_default)#
+data@tax_table@.Data <- substring(data@tax_table@.Data, 4)#
+#rename columns to species level#
+colnames(data@tax_table@.Data)<- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")#
+#
+#View(data@tax_table@.Data)#
+#unique(as.data.frame(data@tax_table)$Genus)#
+#unique(as.data.frame(data@tax_table)$Family)#
+#unique(as.data.frame(data@tax_table)$Order)#
+#unique(as.data.frame(data@tax_table)$Phylum)#
+#unique(as.data.frame(data@tax_table)$Kingdom)#
+#
+#I added a taxa to this that is likely a false positive from Kraken#
+data <- subset_taxa(data, (!Kingdom %in% "Viridiplantae")) # Plants#
+data <- subset_taxa(data, (!Kingdom %in% "Metazoa")) # Animals#
+ps <- tax_glom(data, taxrank = "Genus", NArm = TRUE)#
+otu <- as(otu_table(ps), "matrix")
+#import biom file from kraken-biom#
+data <-import_biom("./biom_files_targetcapture/bracken_genera.ITS_targetcapture.biom", parseFunction = parse_taxonomy_default)#
+data@tax_table@.Data <- substring(data@tax_table@.Data, 4)#
+#rename columns to species level#
+colnames(data@tax_table@.Data)<- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")#
+#
+#View(data@tax_table@.Data)#
+#
+#I added a taxa to this that is likely a false positive from Kraken#
+data <- subset_taxa(data, (!Kingdom %in% "Viridiplantae")) # Plants#
+data <- subset_taxa(data, (!Kingdom %in% "Metazoa")) # Animals
+#create sample data for phyloseq object#
+samdf <- md#
+#
+#make sample names the rows#
+row.names(samdf) <- samdf[, 1]#
+samdf <- samdf[, 2:ncol(samdf)]#
+## samdf$Bacterial.Supplement <- factor(samdf$Bacterial.Supplement, levels = c("Yes", "No"))#
+#
+# adds metadata to data#
+# --- ALIGN METADATA TO OTU TABLE SAMPLE NAMES (critical) ---#
+otu_samps <- sample_names(data)  # or colnames(data@otu_table@.Data)#
+md_samps  <- rownames(samdf)#
+keep <- intersect(otu_samps, md_samps)#
+keep#
+#
+samdf <- samdf[keep, , drop = FALSE]#
+samdf <- samdf[sample_names(data), , drop = FALSE] # reorder metadata to match phyloseq sample order#
+stopifnot(identical(rownames(samdf), sample_names(data)))#
+#
+# assign sample_data#
+sample_data(data) <- sample_data(samdf)#
+data  <- prune_samples(keep, data)#
+#
+# Separate by sample type#
+unique(data@sam_data$Type)#
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")#
+mock_community <- subset_samples(data, Type == "Mock community")
+#load in sample metadata#
+md <- read.csv(file = "./metadata/amplicon_resequencing_metadata.tsv", header = T, sep = "\t")#
+#
+#create sample data for phyloseq object#
+samdf <- md#
+#
+#make sample names the rows#
+row.names(samdf) <- samdf[, 1]#
+samdf <- samdf[, 2:ncol(samdf)]#
+## samdf$Bacterial.Supplement <- factor(samdf$Bacterial.Supplement, levels = c("Yes", "No"))#
+#
+# adds metadata to data#
+# --- ALIGN METADATA TO OTU TABLE SAMPLE NAMES (critical) ---#
+otu_samps <- sample_names(data)  # or colnames(data@otu_table@.Data)#
+md_samps  <- rownames(samdf)#
+keep <- intersect(otu_samps, md_samps)#
+keep#
+#
+samdf <- samdf[keep, , drop = FALSE]#
+samdf <- samdf[sample_names(data), , drop = FALSE] # reorder metadata to match phyloseq sample order#
+stopifnot(identical(rownames(samdf), sample_names(data)))#
+#
+# assign sample_data#
+sample_data(data) <- sample_data(samdf)#
+data  <- prune_samples(keep, data)#
+#
+# Separate by sample type#
+unique(data@sam_data$Type)#
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")#
+mock_community <- subset_samples(data, Type == "Mock community")
+sample_names(data)
+#change names of samples from files#
+# this step is to fix column names (e.g. "CLBJ-22-1-Rh.k2_bracken_genuses" ) View(data@otu_table). #
+colnames(data@otu_table@.Data) <- gsub("\\.k2_bracken_genuses", "", colnames(data@otu_table@.Data))#
+#
+#change this based on what taxonomic level you imported from Bracken. e.g., if you imported genus level data, #
+##change "_._report_bracken_families" to "_._report_bracken_genuses" #
+#
+#load in sample metadata#
+md <- read.csv(file = "./metadata/amplicon_resequencing_metadata.tsv", header = T, sep = "\t")#
+#
+#create sample data for phyloseq object#
+samdf <- md#
+#
+#make sample names the rows#
+row.names(samdf) <- samdf[, 1]#
+samdf <- samdf[, 2:ncol(samdf)]#
+## samdf$Bacterial.Supplement <- factor(samdf$Bacterial.Supplement, levels = c("Yes", "No"))#
+#
+# adds metadata to data#
+# --- ALIGN METADATA TO OTU TABLE SAMPLE NAMES (critical) ---#
+otu_samps <- sample_names(data)  # or colnames(data@otu_table@.Data)#
+md_samps  <- rownames(samdf)#
+keep <- intersect(otu_samps, md_samps)#
+keep
+samdf <- samdf[keep, , drop = FALSE]#
+samdf <- samdf[sample_names(data), , drop = FALSE] # reorder metadata to match phyloseq sample order#
+stopifnot(identical(rownames(samdf), sample_names(data)))#
+#
+# assign sample_data#
+sample_data(data) <- sample_data(samdf)#
+data  <- prune_samples(keep, data)#
+#
+# Separate by sample type#
+unique(data@sam_data$Type)#
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")#
+mock_community <- subset_samples(data, Type == "Mock community")
+ideal <- read.csv("mock_community_ITS.csv")
+alltaxa <- names(sort(taxa_sums(mock_community), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(mock_community, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+for_gg <- psmelt(ps.alltaxa)#
+for_gg_ideal <- ideal#
+#
+for_gg %>% mutate(Genus_lumped = ifelse((! Genus %in% ideal$Genus), "Other", as.character(Genus)), Genus_lumped = factor(Genus_lumped)) -> for_gg#
+# Code to force all factors to show in the following ggplot even with 0 data to avoid messing up legend ordering#
+all_levels <- union(levels(factor(for_gg$Genus_lumped)), levels(factor(for_gg_ideal$Genus_lumped)))#
+for_gg_ideal %>% mutate(Genus_lumped = ifelse((! Genus %in% ideal$Genus), "Other", as.character(Genus)), Genus_lumped = factor(Genus_lumped)) -> for_gg_ideal#
+for_gg_ideal$Genus_lumped <- factor(for_gg_ideal$Genus_lumped, levels = all_levels)#
+#
+for_gg %>% mutate(Family_lumped = ifelse((! Family %in% ideal$Family), "Other", as.character(Family)), Family_lumped = factor(Family_lumped)) -> for_gg#
+# Code to force all factors to show in the following ggplot even with 0 data to avoid messing up legend ordering#
+all_levels <- union(levels(factor(for_gg$Family_lumped)), levels(factor(for_gg_ideal$Family_lumped)))#
+for_gg$Family_lumped <- factor(for_gg$Family_lumped, levels = all_levels)#
+# Check for missing genera and add them to the ideal dataset to avoid messing up legend ordering#
+for_gg_ideal %>% mutate(Family_lumped = ifelse((! Family %in% ideal$Family), "Other", as.character(Family)), Family_lumped = factor(Family_lumped)) -> for_gg_ideal#
+for_gg_ideal$Family_lumped <- factor(for_gg_ideal$Family_lumped, levels = all_levels)#
+#
+for_gg %>% mutate(Phylum_lumped = ifelse((! Phylum %in% ideal$Phylum), "Other", as.character(Phylum)), Phylum_lumped = factor(Phylum_lumped)) -> for_gg#
+for_gg_ideal %>% mutate(Phylum_lumped = ifelse((! Phylum %in% ideal$Phylum), "Other", as.character(Phylum)), Phylum_lumped = factor(Phylum_lumped)) -> for_gg_ideal#
+# Code to force all factors to show in the following ggplot even with 0 data to avoid messing up legend ordering#
+all_levels <- union(levels(factor(for_gg$Phylum_lumped)), levels(factor(for_gg_ideal$Phylum_lumped)))#
+for_gg$Phylum_lumped <- factor(for_gg$Phylum_lumped, levels = all_levels)#
+for_gg_ideal$Phylum_lumped <- factor(for_gg_ideal$Phylum_lumped, levels = all_levels)
+amplicon <- read.table("./results_amplicon/ITS/table.hostremoved-l6.tsv", sep = "\t", header = TRUE, row.names = 1, check.names=FALSE)#
+taxon_list = c("N13-2-D-No", "N13-2-D-Rh", "N13-2-D-Ro", "N34-2-D-No", "N34-2-D-Rh", "N34-2-D-Ro", "N35-4-D-No", "N35-4-D-Rh", "N35-4-D-Ro", "N36-4-D-No", "N36-4-D-Rh", "N36-4-D-Ro", "N38-2-D-No", "N38-2-D-Rh", "N38-2-D-Ro", "N39-2-D-No", "N39-2-D-Rh", "N39-2-D-Ro", "N49-3-D-No", "N49-3-D-Rh", "N49-3-D-Ro")#, "ZymoMockDNA", "ZymoMockDNA_1685")#
+amplicon <- subset(amplicon, select = names(amplicon) %in% taxon_list)#
+OTU = otu_table(amplicon, taxa_are_rows = TRUE)#
+#
+tax <- as.data.frame(t(as.data.frame(strsplit(row.names(OTU), ";"))))#
+# Define the taxonomic levels#
+tax <- lapply(tax, function(x) gsub("^[kpcofg]__", "", x, perl = TRUE))#
+tax <- as.data.frame(lapply(tax, function(x) gsub("__", "", x, perl = TRUE)))#
+tax_levels <- c("Domain", "Phylum", "Class", "Order", "Family", "Genus")#
+names(tax) <- tax_levels#
+#
+TAX = tax_table(as.matrix(tax))#
+#
+row.names(OTU) <- row.names(TAX)#
+data_amplicon = phyloseq(OTU, TAX)#
+#
+# load in sample metadata#
+md <- read.csv(file = "./metadata/amplicon_original_metadata.tsv", header = T, sep = "\t")#
+#
+# create sample data for phyloseq object#
+samdf <- md#
+row.names(samdf) <- samdf[, 1]#
+samdf <- samdf[, 2:ncol(samdf)]#
+#
+# adds metadata to data#
+data_amplicon@sam_data<-sample_data(samdf)
+amplicon <- read.table("./results_amplicon/ITS/table.hostremoved-l6.tsv", sep = "\t", header = TRUE, row.names = 1, check.names=FALSE)
+amplicon <- read.table("./biom_files_amplicon/ITS/table.hostremoved-l6.tsv", sep = "\t", header = TRUE, row.names = 1, check.names=FALSE)
+taxon_list = c("N13-2-D-No", "N13-2-D-Rh", "N13-2-D-Ro", "N34-2-D-No", "N34-2-D-Rh", "N34-2-D-Ro", "N35-4-D-No", "N35-4-D-Rh", "N35-4-D-Ro", "N36-4-D-No", "N36-4-D-Rh", "N36-4-D-Ro", "N38-2-D-No", "N38-2-D-Rh", "N38-2-D-Ro", "N39-2-D-No", "N39-2-D-Rh", "N39-2-D-Ro", "N49-3-D-No", "N49-3-D-Rh", "N49-3-D-Ro")#, "ZymoMockDNA", "ZymoMockDNA_1685")#
+amplicon <- subset(amplicon, select = names(amplicon) %in% taxon_list)#
+OTU = otu_table(amplicon, taxa_are_rows = TRUE)
+taxon_list = c("N13-2-D-No", "N13-2-D-Rh", "N13-2-D-Ro", "N34-2-D-No", "N34-2-D-Rh", "N34-2-D-Ro", "N35-4-D-No", "N35-4-D-Rh", "N35-4-D-Ro", "N36-4-D-No", "N36-4-D-Rh", "N36-4-D-Ro", "N38-2-D-No", "N38-2-D-Rh", "N38-2-D-Ro", "N39-2-D-No", "N39-2-D-Rh", "N39-2-D-Ro", "N49-3-D-No", "N49-3-D-Rh", "N49-3-D-Ro")#, "ZymoMockDNA", "ZymoMockDNA_1685")#
+data  <- prune_samples(keep, taxon_list)#
+#
+# Separate by sample type#
+unique(data@sam_data$Type)#
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")#
+mock_community <- subset_samples(data, Type == "Mock community")
+sample_names(data)
+data  <- prune_samples(taxon_list, data)#
+sample_names(data)
+unique(data@sam_data$Type)#
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")#
+mock_community <- subset_samples(data, Type == "Mock community")
+unique(data@sam_data$Type)
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")
+amplicon <- read.table("./biom_files_amplicon/ITS/table.hostremoved-l6.tsv", sep = "\t", header = TRUE, row.names = 1, check.names=FALSE)#
+amplicon <- subset(amplicon, select = names(amplicon) %in% taxon_list)#
+OTU = otu_table(amplicon, taxa_are_rows = TRUE)
+tax <- as.data.frame(t(as.data.frame(strsplit(row.names(OTU), ";"))))#
+# Define the taxonomic levels#
+tax <- lapply(tax, function(x) gsub("^[kpcofg]__", "", x, perl = TRUE))#
+tax <- as.data.frame(lapply(tax, function(x) gsub("__", "", x, perl = TRUE)))#
+tax_levels <- c("Domain", "Phylum", "Class", "Order", "Family", "Genus")#
+names(tax) <- tax_levels
+TAX = tax_table(as.matrix(tax))#
+#
+row.names(OTU) <- row.names(TAX)#
+data_amplicon = phyloseq(OTU, TAX)#
+#
+# load in sample metadata#
+md <- read.csv(file = "./metadata/amplicon_original_metadata.tsv", header = T, sep = "\t")#
+#
+# create sample data for phyloseq object#
+samdf <- md#
+row.names(samdf) <- samdf[, 1]#
+samdf <- samdf[, 2:ncol(samdf)]
+# adds metadata to data#
+data_amplicon@sam_data<-sample_data(samdf)#
+#
+#### Set up plot objects#
+#
+# This time don't do top 20 microbial taxa, it will warp things in diverse samples#
+alltaxa <- names(sort(taxa_sums(data), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)
+for_gg <- psmelt(ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Genus)), Genus_lumped = factor(Genus_lumped)) -> for_gg#
+for_gg %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Family)), Family_lumped = factor(Family_lumped)) -> for_gg#
+#
+# Reorder factor for plot order#
+for_gg$Sample.ID.1 <- factor(for_gg$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+#
+alltaxa <- names(sort(taxa_sums(data_amplicon), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data_amplicon, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Phylum))) -> for_gg_amplicon#
+#
+## Remove leftover host designations#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Genus != "Lupinus", ]#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Family != "mitochondria", ]#
+#
+## Name correction#
+#for_gg_amplicon$Family[for_gg_amplicon$Genus == "Sinorhizobium"] <- "Ensifer"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Bradyrhizobiaceae"] <- "Xanthobacteraceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Methylobacteriaceae"] <- "Beijerinckiaceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Rhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Neorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Pararhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Allorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_ideal$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_ideal$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_ideal$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+# This time don't do top 20 microbial taxa, it will warp things in diverse samples#
+alltaxa <- names(sort(taxa_sums(data), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+for_gg <- psmelt(ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.02, "Other", as.character(Genus)), Genus_lumped = factor(Genus_lumped)) -> for_gg#
+for_gg %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.02, "Other", as.character(Family)), Family_lumped = factor(Family_lumped)) -> for_gg#
+#
+# Reorder factor for plot order#
+for_gg$Sample.ID.1 <- factor(for_gg$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+#
+alltaxa <- names(sort(taxa_sums(data_amplicon), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data_amplicon, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.02, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.02, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.02, "Other", as.character(Phylum))) -> for_gg_amplicon#
+#
+## Remove leftover host designations#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Genus != "Lupinus", ]#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Family != "mitochondria", ]#
+#
+## Name correction#
+#for_gg_amplicon$Family[for_gg_amplicon$Genus == "Sinorhizobium"] <- "Ensifer"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Bradyrhizobiaceae"] <- "Xanthobacteraceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Methylobacteriaceae"] <- "Beijerinckiaceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Rhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Neorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Pararhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Allorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_ideal$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_ideal$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_ideal$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+#make pct level bar chart#
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+# Merge low-abundance taxa into an "other" category#
+for_gg %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.01, "Other", as.character(Genus)), Genus_lumped = factor(Genus_lumped)) -> for_gg#
+for_gg %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.01, "Other", as.character(Family)), Family_lumped = factor(Family_lumped)) -> for_gg#
+#
+# Reorder factor for plot order#
+for_gg$Sample.ID.1 <- factor(for_gg$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+#
+alltaxa <- names(sort(taxa_sums(data_amplicon), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data_amplicon, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.01, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.01, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.01, "Other", as.character(Phylum))) -> for_gg_amplicon#
+#
+## Remove leftover host designations#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Genus != "Lupinus", ]#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Family != "mitochondria", ]#
+#
+## Name correction#
+#for_gg_amplicon$Family[for_gg_amplicon$Genus == "Sinorhizobium"] <- "Ensifer"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Bradyrhizobiaceae"] <- "Xanthobacteraceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Methylobacteriaceae"] <- "Beijerinckiaceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Rhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Neorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Pararhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Allorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_ideal$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_ideal$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_ideal$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Sample.ID.1, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Sample.ID.1, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax) + #
+	scale_color_manual(values = col_tax)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax) + #
+	scale_color_manual(values = col_tax)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg_amplicon[for_gg_amplicon$Tribe != "na",], #
+	mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg_amplicon[for_gg_amplicon$Tribe != "na",], #
+	mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+ggplot(data = for_gg_amplicon[for_gg_amplicon$Tribe != "na",], #
+	mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+ggplot(data = for_gg_amplicon, #
+    mapping = aes(Sample.ID.1, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg_amplicon[for_gg_amplicon$Tribe != "na",], #
+	mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+ggplot(data = for_gg_amplicon[for_gg_amplicon$Tribe != "na",], #
+	mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+ggplot(data = for_gg_amplicon, #
+    mapping = aes(Sample.ID.1, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Genus_lumped, fill = Genus_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_genus) + #
+	scale_color_manual(values = col_tax_genus)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+ggplot(data = for_gg_amplicon, #
+    mapping = aes(Sample.ID.1, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Family_lumped, fill = Family_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_family) + #
+	scale_color_manual(values = col_tax_family)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+for_gg
+sum(for_gg[])
+head(for_gg[])
+head(for_gg[for_gg$Family == "Stachyboryaceae", ]$Abundance)
+for_gg[for_gg$Family == "Stachyboryaceae", ]$Abundance
+for_gg[for_gg$Family == "Stachybotryaceae", ]$Abundance
+for_gg[for_gg$Family == "Extremaceae", ]$Abundance
+for_gg[for_gg$Family == "Extremaceae", ]$Abundance
+for_gg[for_gg$Family == "Extremaceae", ]$Sample
+for_gg[for_gg$Family == "Extremaceae", ]$Tribe
+for_gg[for_gg$Family == "Ceratobasidiaceae", ]$Abundance
+for_gg[for_gg$Family == "Filobasidiaceae", ]$Abundance
+for_gg[for_gg$Family == "Dothideomycetes_fam_Incertae_Sedis", ]$Abundance
+for_gg[for_gg$Family == "Dothideomycetes*", ]$Abundance
+for_gg[for_gg$Family == "Dothideomycetes", ]$Abundance
+unique(for_gg$Family)
+sort(unique(for_gg$Family))
+for_gg[for_gg$Family == "Dothideomycetes_fam_Incertae_sedis", ]$Abundance
+for_gg[for_gg$Family == "Filobasidiaceae", ]$Abundance
+sort(for_gg[for_gg$Family == "Filobasidiaceae", ]$Abundance)
+sort(for_gg[for_gg$Family == "Filobasidiaceae", ]$Abundance, decreasing = TRUE)
+for_gg[for_gg$Family == "Dothideomycetes_fam_Incertae_sedis", ]$Abundance
+for_gg[for_gg$Family == "Saccharomycetaceae", ]$Abundance
+for_gg[for_gg$Family == "Phallaceae", ]$Abundance
+for_gg[for_gg$Family == "Spizellomycetales_fam_Incertae_sedis", ]$Abundance
+for_gg[for_gg$Family == "Spizellomycetales_fam_Incertae_sedis", ]$Tribe
+for_gg[for_gg$Family == "Stachybotryaceae", ]$Tribe
+for_gg[for_gg$Family == "Stachybotryaceae", ]$Abundance
+for_gg[for_gg$Family == "Dothideomycetes_fam_Incertae_sedis", ]$Abundance
+for_gg[for_gg$Family == "Dothideomycetes_fam_Incertae_sedis", ]$Type
+for_gg[for_gg$Family == "Spizellomycetales_fam_Incertae_sedis", ]$Abundance
+for_gg[for_gg$Family == "Spizellomycetales_fam_Incertae_sedis", ]$Type
+for_gg[for_gg$Family == "Malasseziaceae", ]$Type
+for_gg[for_gg$Family == "Malasseziaceae", ]$Abundance
+for_gg[for_gg$Family == "Basidiomycota_fam_Incertae_sedis", ]$Type
+for_gg[for_gg$Family == "Basidiomycota_fam_Incertae_sedis", ]$Abundance
+for_gg[for_gg$Family == "Basidiomycota_fam_Incertae_sedis", ]$Abundance
+for_gg[for_gg$Family == "Basidiomycota_fam_Incertae_sedis", ]$Tribe
+for_gg_amplicon[for_gg$Family == "unidentified", ]$Tribe
+for_gg_amplicon[for_gg$Family == "unidentified", ]$Tribe
+for_gg_amplicon[for_gg$Family == "Trichomeriaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Trichomeriaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "unidentified", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "unidentified", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Trimorphomycetaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Trimorphomycetaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Other", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Other", ]$Abundance
+sort(unique(for_gg_amplicon$Family == "Other"))
+sort(unique(for_gg_amplicon$Family))
+for_gg_amplicon[for_gg_amplicon$Family == "Minutisphaeraceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Minutisphaeraceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Tichomeriaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Trichomeriaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Trichomeriaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Myrmecridiaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Myrmecridiaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Niessliaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Niessliaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Schizoporaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Schizoporaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "unidentified", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "unidentified", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Russulaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Russulaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Pleosporaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Pleosporaceae", ]$Abundace
+for_gg_amplicon[for_gg_amplicon$Family == "Pleosporaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Phaffomycetaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Phaffomycetaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Schizoporaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Schizoporaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Herpotrichiellaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Herpotrichiellaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Didymosphaeriaceae", ]$Tribe
+for_gg_amplicon[for_gg_amplicon$Family == "Didymosphaeriaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Meruliaceae", ]$Abundance
+for_gg_amplicon[for_gg_amplicon$Family == "Meruliaceae", ]$Tribe
+head(for_gg_amplicon)
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+for_gg %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.01, "Other", as.character(Phylum)), Phylum_lumped = factor(Phylum_lumped)) -> for_gg
+for_gg$Type <- factor(for_gg$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))
+for_gg$Type <- factor(for_gg$Type, levels = c("rhizosphere", "root", "nodule"))
+alltaxa <- names(sort(taxa_sums(data_amplicon), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data_amplicon, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.01, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.01, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.01, "Other", as.character(Phylum))) -> for_gg_amplicon
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+# Merge low-abundance taxa into an "other" category#
+for_gg %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Genus)), Genus_lumped = factor(Genus_lumped)) -> for_gg#
+for_gg %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Family)), Family_lumped = factor(Family_lumped)) -> for_gg#
+for_gg %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Phylum)), Phylum_lumped = factor(Phylum_lumped)) -> for_gg#
+#
+# Reorder factor for plot order#
+for_gg$Type <- factor(for_gg$Type, levels = c("rhizosphere", "root", "nodule"))#
+#
+alltaxa <- names(sort(taxa_sums(data_amplicon), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data_amplicon, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Phylum))) -> for_gg_amplicon#
+#
+## Remove leftover host designations
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+head(for_gg)
+unique(for_gg$Phylum)
+data <-import_biom("./biom_files_targetcapture/bracken_genera.ITS_targetcapture.biom", parseFunction = parse_taxonomy_default)#
+data@tax_table@.Data <- substring(data@tax_table@.Data, 4)#
+#rename columns to species level#
+colnames(data@tax_table@.Data)<- c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species")#
+#
+#View(data@tax_table@.Data)#
+#
+#I added a taxa to this that is likely a false positive from Kraken#
+data <- subset_taxa(data, (!Kingdom %in% "Viridiplantae")) # Plants#
+data <- subset_taxa(data, (!Kingdom %in% "Metazoa")) # Animals#
+data <- subset_taxa(data, (Kingdom %in% "Fungi")) # Keep fungi
+#change names of samples from files#
+# this step is to fix column names (e.g. "CLBJ-22-1-Rh.k2_bracken_genuses" ) View(data@otu_table). #
+colnames(data@otu_table@.Data) <- gsub("\\.k2_bracken_genuses", "", colnames(data@otu_table@.Data))#
+#
+#change this based on what taxonomic level you imported from Bracken. e.g., if you imported genus level data, #
+##change "_._report_bracken_families" to "_._report_bracken_genuses" #
+#
+#load in sample metadata#
+md <- read.csv(file = "./metadata/amplicon_resequencing_metadata.tsv", header = T, sep = "\t")#
+#
+#create sample data for phyloseq object#
+samdf <- md#
+#
+#make sample names the rows#
+row.names(samdf) <- samdf[, 1]#
+samdf <- samdf[, 2:ncol(samdf)]#
+## samdf$Bacterial.Supplement <- factor(samdf$Bacterial.Supplement, levels = c("Yes", "No"))#
+#
+# adds metadata to data#
+# --- ALIGN METADATA TO OTU TABLE SAMPLE NAMES (critical) ---#
+otu_samps <- sample_names(data)  # or colnames(data@otu_table@.Data)#
+md_samps  <- rownames(samdf)#
+keep <- intersect(otu_samps, md_samps)#
+keep#
+#
+samdf <- samdf[keep, , drop = FALSE]#
+samdf <- samdf[sample_names(data), , drop = FALSE] # reorder metadata to match phyloseq sample order#
+stopifnot(identical(rownames(samdf), sample_names(data)))#
+#
+# assign sample_data#
+sample_data(data) <- sample_data(samdf)#
+data  <- prune_samples(keep, data)#
+#
+# Separate by sample type#
+unique(data@sam_data$Type)#
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")#
+mock_community <- subset_samples(data, Type == "Mock community")
+# Target sequencing#
+taxon_list = c("N13-2-D-No", "N13-2-D-Rh", "N13-2-D-Ro", "N34-2-D-No", "N34-2-D-Rh", "N34-2-D-Ro", "N35-4-D-No", "N35-4-D-Rh", "N35-4-D-Ro", "N36-4-D-No", "N36-4-D-Rh", "N36-4-D-Ro", "N38-2-D-No", "N38-2-D-Rh", "N38-2-D-Ro", "N39-2-D-No", "N39-2-D-Rh", "N39-2-D-Ro", "N49-3-D-No", "N49-3-D-Rh", "N49-3-D-Ro")#, "ZymoMockDNA", "ZymoMockDNA_1685")#
+data  <- prune_samples(taxon_list, data)#
+sample_names(data)#
+#
+# Separate by sample type#
+unique(data@sam_data$Type)#
+nodule <- subset_samples(data, Type == "nodule")#
+root <- subset_samples(data, Type == "root")#
+rhizosphere <- subset_samples(data, Type == "rhizosphere")#
+#
+amplicon <- read.table("./biom_files_amplicon/ITS/table.hostremoved-l6.tsv", sep = "\t", header = TRUE, row.names = 1, check.names=FALSE)#
+amplicon <- subset(amplicon, select = names(amplicon) %in% taxon_list)#
+OTU = otu_table(amplicon, taxa_are_rows = TRUE)#
+#
+tax <- as.data.frame(t(as.data.frame(strsplit(row.names(OTU), ";"))))#
+# Define the taxonomic levels#
+tax <- lapply(tax, function(x) gsub("^[kpcofg]__", "", x, perl = TRUE))#
+tax <- as.data.frame(lapply(tax, function(x) gsub("__", "", x, perl = TRUE)))#
+tax_levels <- c("Domain", "Phylum", "Class", "Order", "Family", "Genus")#
+names(tax) <- tax_levels#
+#
+TAX = tax_table(as.matrix(tax))#
+#
+row.names(OTU) <- row.names(TAX)#
+data_amplicon = phyloseq(OTU, TAX)#
+#
+# load in sample metadata#
+md <- read.csv(file = "./metadata/amplicon_original_metadata.tsv", header = T, sep = "\t")#
+#
+# create sample data for phyloseq object#
+samdf <- md#
+row.names(samdf) <- samdf[, 1]#
+samdf <- samdf[, 2:ncol(samdf)]#
+#
+# adds metadata to data#
+data_amplicon@sam_data<-sample_data(samdf)#
+#
+#### Set up plot objects#
+#
+# This time don't do top 20 microbial taxa, it will warp things in diverse samples#
+alltaxa <- names(sort(taxa_sums(data), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+for_gg <- psmelt(ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Genus)), Genus_lumped = factor(Genus_lumped)) -> for_gg#
+for_gg %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Family)), Family_lumped = factor(Family_lumped)) -> for_gg#
+for_gg %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg$Abundance) < 0.005, "Other", as.character(Phylum)), Phylum_lumped = factor(Phylum_lumped)) -> for_gg#
+#
+# Reorder factor for plot order#
+for_gg$Type <- factor(for_gg$Type, levels = c("rhizosphere", "root", "nodule"))#
+#
+alltaxa <- names(sort(taxa_sums(data_amplicon), decreasing = TRUE))#
+ps.alltaxa <- transform_sample_counts(data_amplicon, function(OTU) OTU/sum(OTU))#
+ps.alltaxa <- prune_taxa(alltaxa, ps.alltaxa)#
+#
+# Merge low-abundance taxa into an "other" category#
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Phylum))) -> for_gg_amplicon#
+#
+## Remove leftover host designations#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Genus != "Lupinus", ]#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Family != "mitochondria", ]#
+#
+## Name correction#
+#for_gg_amplicon$Family[for_gg_amplicon$Genus == "Sinorhizobium"] <- "Ensifer"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Bradyrhizobiaceae"] <- "Xanthobacteraceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Methylobacteriaceae"] <- "Beijerinckiaceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Rhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Neorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Pararhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Allorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +
+ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum, fill = Phylum), stat = "identity", position = "fill")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum, fill = Phylum), stat = "identity", position = "fill")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum, fill = Phylum), stat = "identity", position = "fill")col_tax_genus
+col_tax_genus
+col_tax_phylum
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Phylum))) -> for_gg_amplicon#
+for_gg_amplicon$Phylum_lumped <- replace(for_gg_amplicon$Phylum_lumped, for_gg_amplicon$Phylum_lumped == "", "Unassigned")
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+alltaxa
+ps.alltaxa
+# Merge low-abundance taxa into an "other" category#
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Family_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Family))) -> for_gg_amplicon#
+for_gg_amplicon$Family_lumped <- replace(for_gg_amplicon$Family_lumped, for_gg_amplicon$Family_lumped == "", "Unassigned")#
+for_gg_amplicon %>% mutate(Phylum_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Phylum))) -> for_gg_amplicon#
+for_gg_amplicon$Phylum_lumped <- replace(for_gg_amplicon$Phylum_lumped, for_gg_amplicon$Phylum_lumped == "", "Unassigned")#
+#
+## Remove leftover host designations#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Genus != "Lupinus", ]#
+#for_gg_amplicon <- for_gg_amplicon[for_gg_amplicon$Family != "mitochondria", ]#
+#
+## Name correction#
+#for_gg_amplicon$Family[for_gg_amplicon$Genus == "Sinorhizobium"] <- "Ensifer"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Bradyrhizobiaceae"] <- "Xanthobacteraceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Methylobacteriaceae"] <- "Beijerinckiaceae"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Rhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Neorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Pararhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#for_gg_amplicon$Family[for_gg_amplicon$Family == "Allorhizobium"] <- "Allorhizobium-Neorhizobium-Pararhizobium-Rhizobium"#
+#
+# Reorder factor for plot order#
+for_gg_amplicon$Sample.ID.1 <- factor(for_gg_amplicon$Sample.ID.1, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+all_genera <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))
+all_phyla
+all_phyla <- c(all_phyla, "Other", "Unassigned")
+all_phyla
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+#all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+col_tax_phylum
+for_gg
+head(for_gg)
+head(for_gg, 1000)
+for_gg$Phylum
+for_gg$Phylum_lumped
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))
+all_genera
+unique(for_gg$Phylum)
+unique(for_gg$Phylum)
+targets <- c("Ascomycota", "Basidiomycota", "Chytridiomycota", "Glomeromycota", "Rozellomycota", "Mucoromycota", "Mortierellomycota", "Neocallimastigomycota", "Kickxellomycota", "Zoopagomycota", "Blastocladiomycota")
+for_gg_amplicon <- psmelt(ps.alltaxa)#
+#for_gg_amplicon %>% mutate(Genus_lumped = ifelse(Abundance / sum(for_gg_amplicon$Abundance) < 0.005, "Other", as.character(Genus))) -> for_gg_amplicon#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "GS01_phy_Incertae_sedis", "Other")#
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "Fungi_phy_Incertae_sedis", "Other")
+for_gg_amplicon <- psmelt(ps.alltaxa)
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "GS01_phy_Incertae_sedis", "Other")
+for_gg_amplicon$Genus_lumped <- replace(for_gg_amplicon$Genus_lumped, for_gg_amplicon$Genus_lumped == "Fungi_phy_Incertae_sedis", "Other")
+for_gg$Genus_lumped <- replace(for_gg$Genus_lumped, for_gg$Genus_lumped == "GS01_phy_Incertae_sedis", "Other")#
+for_gg$Genus_lumped <- replace(for_gg$Genus_lumped, for_gg$Genus_lumped == "Fungi_phy_Incertae_sedis", "Other")
+for_gg$Phylum_lumped <- replace(for_gg$Phylum_lumped, for_gg$Phylum_lumped == "GS01_phy_Incertae_sedis", "Other")#
+for_gg$Phylum_lumped <- replace(for_gg$Phylum_lumped, for_gg$Phylum_lumped == "Fungi_phy_Incertae_sedis", "Other")
+for_gg$Phylum_lumped <- replace(for_gg$Phylum, for_gg$Phylum == "GS01_phy_Incertae_sedis", "Other")#
+for_gg$Phylum_lumped <- replace(for_gg$Phylum, for_gg$Phylum == "Fungi_phy_Incertae_sedis", "Other")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+#all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+#all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+for_gg_amplicon$Phylum_lumped
+for_gg_amplicon$Phylum
+unique(for_gg_amplicon$Phylum)
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+col_tax_phylum
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+# <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+#all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+#all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+col_tax_phylum
+for_gg$Phylum_lumped)
+for_gg$Phylum_lumped
+unique(for_gg$Phylum_lumped)
+for_gg$Phylum_lumped <- replace(for_gg$Phylum, for_gg$Phylum == "GS01_phy_Incertae_sedis", "Other")#
+for_gg$Phylum_lumped <- replace(for_gg$Phylum, for_gg$Phylum == "Fungi_phy_Incertae_sedis", "Other")
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+# <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+#all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+#all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+unique(for_gg$Phylum_lumped)
+for_gg$Phylum_lumped <- replace(for_gg$Phylum_lumped, for_gg$Phylum_lumped == "GS01_phy_Incertae_sedis", "Other")#
+for_gg$Phylum_lumped <- replace(for_gg$Phylum_lumped, for_gg$Phylum_lumped == "Fungi_phy_Incertae_sedis", "Other")
+# Reorder factor for plot order#
+for_gg_amplicon$Type <- factor(for_gg_amplicon$Type, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+# <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+#all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+#all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg_amplicon, #
+    mapping = aes(Sample.ID.1, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+for_gg_amplicon$Phylum_lumped <- for_gg_amplicon$Phylum#
+for_gg_amplicon$Phylum_lumped <- replace(for_gg_amplicon$Phylum_lumped, for_gg_amplicon$Phylum_lumped == "unidentified", "Other")#
+for_gg_amplicon$Phylum_lumped <- replace(for_gg_amplicon$Phylum_lumped, for_gg_amplicon$Phylum_lumped == "", "Other")
+# Reorder factor for plot order#
+for_gg_amplicon$Type <- factor(for_gg_amplicon$Type, levels = c("rhizosphere", "root", "nodule"))#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_genera <- unique(c(as.character(for_gg$Genus_lumped), as.character(for_gg_amplicon$Genus_lumped)))#
+# <- c(all_genera, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_genus <- rev(rep(RColorBrewer::brewer.pal(n = length(all_genera), name = "Set3"), length.out = length(all_genera)))#
+names(col_tax_genus) <- all_genera#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_families <- unique(c(as.character(for_gg$Family_lumped), as.character(for_gg_amplicon$Family_lumped)))#
+#all_families <- c(all_families, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_family <- rev(rep(RColorBrewer::brewer.pal(n = length(all_families), name = "Set3"), length.out = length(all_families)))#
+names(col_tax_family) <- all_families#
+#
+### Set manual coloring (sadly needed due to ggplot shortcomings with coloring across figures for frustrating reasons)#
+all_phyla <- unique(c(as.character(for_gg$Phylum_lumped), as.character(for_gg_amplicon$Phylum_lumped)))#
+#all_phyla <- c(all_phyla, "Other", "Unassigned")#
+library(RColorBrewer)#
+# Rep is to do color cycling, rev is to reverse the color palette (I didn't like it forward)#
+col_tax_phylum <- rev(rep(RColorBrewer::brewer.pal(n = length(all_phyla), name = "Set3"), length.out = length(all_phyla)))#
+names(col_tax_phylum) <- all_phyla
+ggplot(data = for_gg_amplicon, #
+    mapping = aes(Sample.ID.1, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")
+ggplot(data = for_gg, #
+    mapping = aes(Type, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg, #
+    mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum) +#
+	ggtitle("Rel. Abundance:\nTarget capture")
+ggplot(data = for_gg_amplicon[for_gg_amplicon$Tribe != "na",], #
+	mapping = aes(Tribe, Abundance)) + #
+	theme(legend.text = element_text(face = "italic"), text = element_text(size = 12), axis.text.x = element_text(angle = 45))+#
+	geom_bar(aes(color = Phylum_lumped, fill = Phylum_lumped), stat = "identity", position = "fill") +#
+	#facet_wrap(~Genus, scales = "free_x") + #
+	scale_fill_manual(values = col_tax_phylum) + #
+	scale_color_manual(values = col_tax_phylum)+#
+	ggtitle("Rel. Abundance:\nAmplicon sequencing")

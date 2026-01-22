@@ -1,0 +1,11 @@
+﻿Phylum,Family,Genus,Abundance,Sample.ID.1
+Firmicutes,Listeriaceae,Listeria,0.12,Mock community
+Proteobacteria,Pseudomonadaceae,Pseudomonas,0.12,Mock community
+Firmicutes,Bacillaceae,Bacillus,0.12,Mock community
+Proteobacteria,Enterobacteriaceae,Escherichia,0.12,Mock community
+Proteobacteria,Enterobacteriaceae,Salmonella,0.12,Mock community
+Firmicutes,Lactobacillaceae,Lactobacillus,0.12,Mock community
+Firmicutes,Enterococcaceae,Enterococcus,0.12,Mock community
+Firmicutes,Staphylococcaceae,Staphylococcus,0.12,Mock community
+Ascomycota,Saccharomycetaceae,Saccharomyces,0.02,Mock community
+Basidiomycota,Cryptococcaceae,Cryptococcus,0.02,Mock community
