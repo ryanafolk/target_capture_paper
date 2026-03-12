@@ -18,3 +18,8 @@ This directory contains six shell scripts representing the Kraken and Braken scr
 
 ## functional_annotation
 This directory contains scripts for the functional locus recovery analysis.
+
+## baits
+Bait design files. `Combined-masked-clust100_used.fas` contains the baits that were synthesized for ITS and symbiosis islands. `centroids_largesubunit.0.9id_0.9cov.fasta`, `centroids_5.8S.0.9id_0.9cov.fasta`, and `centroids_smallsubunit.0.9id_0.9cov.fasta` are the references from which ITS probes were synthesized, according to the strategy describe in the paper; it is recommended to use UNITE as an assembly reference and not this file. `symbiosis_islands.fasta` is the reference from which symbiosis island probes were synthesized, and may be used as an assembly reference.
+
+Note on sample names: NEON samples are of the form: 4letterSiteCode-plantSerialNumber-replicateNumber-sampleType. Sample codes are described in `./metadata/NEON-SiteMap-Table.csv`. Sample types are described in the text, with Rh = "rhizosphere," Ro = "root," and No = "nodule."
