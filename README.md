@@ -18,3 +18,5 @@ This directory contains six shell scripts representing the Kraken and Braken scr
 
 ## functional_annotation
 This directory contains scripts for the functional locus recovery analysis.
+
+Note on sample names: NEON samples are of the form: 4letterSiteCode-plantSerialNumber-replicateNumber-sampleType. Sample codes are described in `./metadata/NEON-SiteMap-Table.csv`. Sample types are described in the text, with Rh = "rhizosphere," Ro = "root," and No = "nodule."
