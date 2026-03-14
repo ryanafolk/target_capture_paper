@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Create BLAST protein database from downloaded symbiosis genes
+makeblastdb -in symbiosis_all_genes_max1000.faa \
+            -dbtype prot \
+            -out symbiosis_all_genes_max1000
+
+echo "BLAST database 'symbiosis_all_genes_max1000' created successfully"

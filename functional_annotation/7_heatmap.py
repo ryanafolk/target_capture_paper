@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Load gene presence/absence matrix
+matrix_file = "gene_presence_absence_matrix.csv"
+df_matrix = pd.read_csv(matrix_file)
+
+# Host species info for our samples
+host_data = [
+    ("CLBJ-13-1-No", "Lespedeza stuevei"),
+    ("CLBJ-24-No", "Chamaecrista fasciculata"),
+    ("CLBJ-27-1-No", "Desmanthus illinoiensis"),
+    ("CLBJ-32-1-No", "Crotalaria sagittalis"),
+    ("CLBJ-37-1-No", "Trifolium vesiculosum"),
+    ("CLBJ-4-1-No", "Dalea aurea"),
+    ("CLBJ-43-2-No", "Indigofera miniata"),
+    ("CPER-1-No", "Astragalus bisulcatus"),
+    ("CPER-2-No", "Melilotus officinalis"),
+    ("DSNY-22-3-No", "Macroptilium lathyroides"),
+    ("DSNY-63-No", "Tephrosia hispidula"),
+    ("DSNY-83-3-No", "Alysicarpus vaginalis"),
+    ("GUAN-7-1-No", "Pictetia aculeata"),
+    ("JERC-112-1-No", "Pediomelum canescens"),
+    ("JERC-14-5-No", "Baptisia alba"),
+    ("JERC-169-No", "Clitoria mariana"),
+    ("JERC-180-5-No", "Zornia bracteata"),
+    ("LAJA-1-3-No", "Mimosa pudica"),
+    ("LAJA-9-1-No", "Aeschynomene americana"),
+    ("RMNP-1-No", "Thermopsis divaricarpa"),
+    ("SCBI-6-1-No", "Amphicarpaea bracteata")
+]
+df_host = pd.DataFrame(host_data, columns=["Sample_ID", "Host_species"])
+
+# Merge host info with gene matrix
+df = pd.merge(df_matrix, df_host, on="Sample_ID", how="left")
+
+# Reorder samples as per gene matrix
+sample_order = df_matrix['Sample_ID'].tolist()
+df = df.set_index('Sample_ID').loc[sample_order].reset_index()
+
+# Extract gene columns only
+genes = df.columns[1:-1]
+matrix = df[genes]
+
+# Plot heatmap
+fig, ax = plt.subplots(figsize=(20, 12))
+sns.heatmap(matrix, ax=ax, cmap=sns.color_palette(["white", "green"]),
+            cbar=False, linewidths=0.5, linecolor='black')
+
+# Left y-axis = Sample_ID
+ax.set_yticks([i + 0.5 for i in range(len(df))])
+ax.set_yticklabels(df['Sample_ID'], rotation=0, fontsize=10, va='center')
+
+# Right y-axis = Host_species
+ax2 = ax.twinx()
+ax2.set_ylim(ax.get_ylim())
+ax2.set_yticks([i + 0.5 for i in range(len(df))])
+ax2.set_yticklabels(df['Host_species'], rotation=0, fontsize=10, va='center')
+ax2.tick_params(axis='y', length=0)
+
+# X-axis = Genes
+ax.set_xticks([i + 0.5 for i in range(len(genes))])
+ax.set_xticklabels(genes, rotation=90, fontsize=10)
+
+# Axis labels
+ax.set_xlabel("Genes")
+ax.set_ylabel("Sample ID")
+ax2.set_ylabel("Host Plant", rotation=-90, labelpad=80)
+
+plt.tight_layout()
+
+# Save figure
+plt.savefig("gene_heatmap.png", dpi=300)
+plt.savefig("gene_heatmap.svg")
+plt.savefig("gene_heatmap.pdf")
+
+print("Heatmap saved as PNG, SVG, and PDF")
+plt.show()
