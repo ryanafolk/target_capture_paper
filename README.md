@@ -17,7 +17,7 @@ This directory contains metadata files used for aggregating samples and reportin
 This directory contains six shell scripts representing the Kraken and Braken scripts used to generate biom files. These are numbered and should be run in order.
 
 ## functional_annotation
-This directory contains scripts for the functional locus recovery analysis.
+This directory contains scripts for the functional locus recovery analysis. The seven scripts should be executed in the numbered order.
 
 ## baits
 Bait design files. `Combined-masked-clust100_used.fas` contains the baits that were synthesized for ITS and symbiosis islands. `centroids_largesubunit.0.9id_0.9cov.fasta`, `centroids_5.8S.0.9id_0.9cov.fasta`, and `centroids_smallsubunit.0.9id_0.9cov.fasta` are the references from which ITS probes were synthesized, according to the strategy describe in the paper; it is recommended to use UNITE as an assembly reference and not this file. `symbiosis_islands.fasta` is the reference from which symbiosis island probes were synthesized, and may be used as an assembly reference.
